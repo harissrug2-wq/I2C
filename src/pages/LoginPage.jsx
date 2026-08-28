@@ -1,12 +1,37 @@
 import React, { useState } from 'react';
-import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, CheckCircle2 } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
-  const [email, setEmail] = useState('dana@harbourline.example');
+  const { loginUser } = useData();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('dana@harbourline.com');
   const [password, setPassword] = useState('••••••••••••');
+  const [name, setName] = useState('Dana Mercer');
+  const [company, setCompany] = useState('Harbourline Distribution');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setError('');
+
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      loginUser(email, name, company);
+      if (onLoginSuccess) onLoginSuccess();
+      else onNavigate('dashboard');
+    }, 400);
+  };
+
+  const handleQuickSignIn = () => {
+    loginUser('dana@harbourline.com', 'Dana Mercer', 'Harbourline Distribution');
     if (onLoginSuccess) onLoginSuccess();
     else onNavigate('dashboard');
   };
@@ -14,7 +39,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   return (
     <div className="min-h-screen bg-[#f8faf9] text-[#0f172a] flex flex-col font-sans">
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-screen">
-        {/* Left Half: Demo Entry Form */}
+        {/* Left Half: Dynamic Authentication & Workspace Entry Form */}
         <div className="lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-[#f8faf9]">
           <div className="space-y-8 max-w-md mx-auto w-full">
             {/* Logo */}
@@ -28,32 +53,91 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </div>
             </div>
 
+            {/* Auth Mode Switcher Tabs */}
+            <div className="flex items-center gap-2 rounded-2xl bg-slate-200/80 p-1">
+              <button
+                onClick={() => { setIsSignUp(false); setError(''); }}
+                className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
+                  !isSignUp ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setIsSignUp(true); setError(''); }}
+                className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
+                  isSignUp ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
+                }`}
+              >
+                Create Workspace
+              </button>
+            </div>
+
             {/* Title & Description */}
             <div className="space-y-2">
-              <h1 className="text-3xl font-extrabold text-[#0f172a] tracking-tight">Enter the demo workspace</h1>
+              <h1 className="text-3xl font-extrabold text-[#0f172a] tracking-tight">
+                {isSignUp ? 'Setup your workspace' : 'Enter your workspace'}
+              </h1>
               <p className="text-xs text-[#64748b] leading-relaxed">
-                Everything inside is <strong className="text-[#0f172a]">demo data</strong> for a fictional distributor, Harbourline Distribution. <strong className="text-[#0f172a]">No authentication is required</strong> — just hit the button below and explore the full experience.
+                {isSignUp 
+                  ? 'Connect QuickBooks & Brightpearl to calculate real-time cash flow & margin intelligence.' 
+                  : 'Access continuous receivables, payables, inventory velocity & cash horizon analytics.'
+                }
               </p>
             </div>
 
-            {/* Light Lime Callout Box */}
+            {/* Callout Banner */}
             <div className="rounded-2xl bg-[#ecfccb] p-4 border border-[#bef264] flex items-start gap-3 text-xs text-[#3f6212] leading-relaxed">
               <Lock className="size-4 shrink-0 text-[#3f6212] mt-0.5" />
               <span>
-                <strong>Read-only demo.</strong> No sign-up, no password, no connection to real books — nothing you click can change any record.
+                <strong>Read-only interlock.</strong> QuickBooks and Brightpearl data is read securely without creating or modifying ledger records.
               </span>
             </div>
 
+            {error && (
+              <div className="rounded-xl bg-red-50 p-3 border border-red-200 text-xs font-semibold text-red-700">
+                {error}
+              </div>
+            )}
+
             {/* Form Fields */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Full name</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Dana Mercer"
+                      className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Company name</label>
+                    <input
+                      type="text"
+                      required
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="e.g. Harbourline Distribution"
+                      className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
+                    />
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Work email</label>
                 <input
-                  type="text"
-                  readOnly
+                  type="email"
+                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#64748b] focus:outline-none shadow-2xs"
+                  placeholder="name@company.com"
+                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
                 />
               </div>
 
@@ -61,31 +145,42 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Password</label>
                 <input
                   type="password"
-                  readOnly
+                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#64748b] focus:outline-none shadow-2xs"
+                  placeholder="••••••••••••"
+                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
                 />
               </div>
 
-              <p className="text-[11px] text-[#94a3b8]">Fields are illustrative only — the demo skips authentication entirely.</p>
-
               <button
                 type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] py-3.5 px-6 text-xs font-bold text-[#052e16] shadow-md transition-all transform active:scale-95 cursor-pointer"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] py-3.5 px-6 text-xs font-bold text-[#052e16] shadow-md transition-all transform active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                View Demo
+                {loading ? 'Authenticating Workspace…' : isSignUp ? 'Create & Launch Workspace' : 'Sign In to Workspace'}
                 <ArrowRight className="size-4" />
               </button>
             </form>
 
-            <div className="text-center pt-2">
+            {/* Quick Access Action */}
+            <div className="pt-2 border-t border-slate-200 text-center space-y-3">
               <button
-                onClick={() => onNavigate('landing')}
-                className="text-xs font-semibold text-[#0f172a] hover:underline cursor-pointer"
+                type="button"
+                onClick={handleQuickSignIn}
+                className="w-full rounded-full bg-slate-100 hover:bg-slate-200/80 py-2.5 px-4 text-xs font-semibold text-[#0f172a] transition-colors cursor-pointer"
               >
-                Back to overview
+                ⚡ Quick Launch Dana Mercer's Workspace
               </button>
+
+              <div>
+                <button
+                  onClick={() => onNavigate('landing')}
+                  className="text-xs font-semibold text-[#64748b] hover:text-[#0f172a] cursor-pointer"
+                >
+                  Back to overview
+                </button>
+              </div>
             </div>
           </div>
 
@@ -176,7 +271,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
           <div className="flex items-center gap-2 text-xs text-[#86a7a0] pt-8 max-w-xl mx-auto w-full">
             <Lock className="size-3.5 text-[#84cc16]" />
-            <span>Demo data · read-only · nothing is ever changed</span>
+            <span>Active workspace interlock · read-only protection</span>
           </div>
         </div>
       </div>

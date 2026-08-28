@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
   DEFAULT_THRESHOLDS,
   INITIAL_CUSTOMERS,
@@ -20,9 +20,43 @@ import {
 
 const DataContext = createContext();
 
+const STORAGE_KEY_USER = 'i2cashflow_user_session';
+const STORAGE_KEY_THRESHOLDS = 'i2cashflow_thresholds';
+const STORAGE_KEY_CASH = 'i2cashflow_cash_balance';
+
 export function DataProvider({ children }) {
+  // Authentication & Workspace User State
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_USER);
+      return saved ? JSON.parse(saved) : {
+        email: 'dana@harbourline.com',
+        name: 'Dana Mercer',
+        company: 'Harbourline Distribution',
+        role: 'Finance Director',
+        isAuthenticated: false
+      };
+    } catch {
+      return {
+        email: 'dana@harbourline.com',
+        name: 'Dana Mercer',
+        company: 'Harbourline Distribution',
+        role: 'Finance Director',
+        isAuthenticated: false
+      };
+    }
+  });
+
   // Raw Data State
-  const [cashBalance, setCashBalance] = useState(INITIAL_CASH_BALANCE);
+  const [cashBalance, setCashBalance] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_CASH);
+      return saved ? Number(saved) : INITIAL_CASH_BALANCE;
+    } catch {
+      return INITIAL_CASH_BALANCE;
+    }
+  });
+
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [invoices, setInvoices] = useState(INITIAL_INVOICES);
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
@@ -32,8 +66,40 @@ export function DataProvider({ children }) {
   const [cogs90d, setCogs90d] = useState(TRAILING_90D_COGS);
   const [purchases90d, setPurchases90d] = useState(TRAILING_90D_PURCHASES);
 
-  // Configurable Workspace Overrides / Thresholds State (Section 7 in Design Doc)
-  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS);
+  // Configurable Workspace Overrides / Thresholds State
+  const [thresholds, setThresholds] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_THRESHOLDS);
+      return saved ? JSON.parse(saved) : DEFAULT_THRESHOLDS;
+    } catch {
+      return DEFAULT_THRESHOLDS;
+    }
+  });
+
+  // Save changes to localStorage for persistence
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_THRESHOLDS, JSON.stringify(thresholds));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [thresholds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_CASH, cashBalance.toString());
+    } catch (e) {
+      console.error(e);
+    }
+  }, [cashBalance]);
 
   // Re-compute all 5 Decision Systems dynamically on any data or threshold change
   const computedData = useMemo(() => {
@@ -54,6 +120,23 @@ export function DataProvider({ children }) {
     };
   }, [cashBalance, customers, invoices, products, bills, vendors, revenue90d, cogs90d, purchases90d, thresholds]);
 
+  // Auth Functions
+  const loginUser = (emailInput, nameInput, companyInput) => {
+    const newUser = {
+      email: emailInput || 'dana@harbourline.com',
+      name: nameInput || (emailInput ? emailInput.split('@')[0] : 'Dana Mercer'),
+      company: companyInput || 'Harbourline Distribution',
+      role: 'Finance Director',
+      isAuthenticated: true
+    };
+    setUser(newUser);
+    return newUser;
+  };
+
+  const logoutUser = () => {
+    setUser(prev => ({ ...prev, isAuthenticated: false }));
+  };
+
   // Helper functions to update state dynamically
   const updateThreshold = (key, value) => {
     setThresholds(prev => ({ ...prev, [key]: Number(value) }));
@@ -72,7 +155,23 @@ export function DataProvider({ children }) {
     setCashBalance(Number(newCash));
   };
 
+  const addCustomer = (newCustomer) => {
+    setCustomers(prev => [newCustomer, ...prev]);
+  };
+
+  const addInvoice = (newInvoice) => {
+    setInvoices(prev => [newInvoice, ...prev]);
+  };
+
+  const addProduct = (newProduct) => {
+    setProducts(prev => [newProduct, ...prev]);
+  };
+
   const value = {
+    // User Auth
+    user,
+    loginUser,
+    logoutUser,
     // Raw state
     cashBalance,
     customers,
@@ -88,6 +187,9 @@ export function DataProvider({ children }) {
     resetThresholds,
     updateCustomerRisk,
     updateCashBalance,
+    addCustomer,
+    addInvoice,
+    addProduct,
     setCustomers,
     setInvoices,
     setProducts,

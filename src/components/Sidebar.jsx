@@ -1,4 +1,5 @@
 import React from 'react';
+import { useData } from '../context/DataContext';
 import { 
   LayoutDashboard, 
   TrendingUp, 
@@ -165,34 +166,45 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
 
         {/* Footer Profile */}
         {!isCollapsed && (
-          <div className="p-4 border-t border-[#1a3832] bg-[#0e221f] space-y-3">
-            <div className="flex items-center gap-3 rounded-xl bg-[#173731] px-3 py-2.5">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#bef264] text-xs font-bold text-[#112723]">
-                DM
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-white">Dana Mercer</span>
-                <span className="block truncate text-[11px] text-[#86a7a0]">Harbourline Distribution</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-[#86a7a0]">
-              <button 
-                onClick={() => setActiveTab('landing')}
-                className="flex items-center gap-1 hover:text-[#bef264] transition-colors cursor-pointer"
-              >
-                <Home className="size-3.5" /> Landing Page
-              </button>
-              <button 
-                onClick={() => setActiveTab('login')}
-                className="flex items-center gap-1 hover:text-[#ef4444] transition-colors cursor-pointer"
-              >
-                <LogOut className="size-3.5" /> Sign Out
-              </button>
-            </div>
-          </div>
+          <SidebarFooter setActiveTab={setActiveTab} />
         )}
       </aside>
     </>
+  );
+}
+
+function SidebarFooter({ setActiveTab }) {
+  const { user, logoutUser } = useData();
+  const name = user?.name || 'Dana Mercer';
+  const company = user?.company || 'Harbourline Distribution';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'DM';
+
+  return (
+    <div className="p-4 border-t border-[#1a3832] bg-[#0e221f] space-y-3">
+      <div className="flex items-center gap-3 rounded-xl bg-[#173731] px-3 py-2.5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#bef264] text-xs font-bold text-[#112723]">
+          {initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-semibold text-white">{name}</span>
+          <span className="block truncate text-[11px] text-[#86a7a0]">{company}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-[11px] text-[#86a7a0]">
+        <button 
+          onClick={() => setActiveTab('landing')}
+          className="flex items-center gap-1 hover:text-[#bef264] transition-colors cursor-pointer"
+        >
+          <Home className="size-3.5" /> Landing Page
+        </button>
+        <button 
+          onClick={() => { logoutUser(); setActiveTab('login'); }}
+          className="flex items-center gap-1 hover:text-[#ef4444] transition-colors cursor-pointer"
+        >
+          <LogOut className="size-3.5" /> Sign Out
+        </button>
+      </div>
+    </div>
   );
 }

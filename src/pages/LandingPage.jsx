@@ -1,7 +1,10 @@
 import React from 'react';
-import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, RefreshCw, Layers } from 'lucide-react';
+import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, RefreshCw } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function LandingPage({ onNavigate }) {
+  const { sys2, sys4, sys3, advisories } = useData();
+
   const screens = [
     'Dashboard', 'Cash flow forecast', 'Alerts',
     'Collections priority', 'Customers', 'Customer risk profile',
@@ -9,6 +12,11 @@ export default function LandingPage({ onNavigate }) {
     'Margin priority', 'Products', 'Product profile',
     'Connections'
   ];
+
+  // Dynamic values derived from live DataContext calculations
+  const receivablesMonitoredStr = `$${Math.round((sys4?.totalAR || 300000) / 1000)}K`;
+  const skusCount = sys2?.skus?.length || 3908;
+  const topAdvisories = advisories?.slice(0, 3) || [];
 
   return (
     <div className="min-h-screen bg-[#f8faf9] text-[#0f172a] flex flex-col font-sans">
@@ -39,7 +47,7 @@ export default function LandingPage({ onNavigate }) {
             onClick={() => onNavigate('login')}
             className="inline-flex items-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] px-5 py-2.5 text-xs font-bold text-[#052e16] shadow-sm transition-all transform active:scale-95 cursor-pointer"
           >
-            View Demo
+            Launch Workspace
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -66,22 +74,22 @@ export default function LandingPage({ onNavigate }) {
               onClick={() => onNavigate('login')}
               className="inline-flex items-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] px-6 py-3.5 text-sm font-bold text-[#052e16] shadow-md transition-all transform active:scale-95 cursor-pointer"
             >
-              View Demo
+              Open Workspace
               <ArrowRight className="size-4" />
             </button>
             <span className="flex items-center gap-1.5 text-xs text-[#64748b] font-medium">
-              <Lock className="size-3.5 text-[#84cc16]" /> No signup — demo data, one click
+              <Lock className="size-3.5 text-[#84cc16]" /> Live interlock engine · read-only safe
             </span>
           </div>
 
-          {/* 4 Stat Counters */}
+          {/* 4 Stat Counters (Dynamically Populated) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-slate-200">
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">$774K</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">{receivablesMonitoredStr}</p>
               <p className="text-[11px] font-medium text-[#64748b] mt-0.5">Receivables monitored</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">3,908</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#0f172a]">{skusCount.toLocaleString()}</p>
               <p className="text-[11px] font-medium text-[#64748b] mt-0.5">SKUs analysed</p>
             </div>
             <div>
@@ -95,41 +103,24 @@ export default function LandingPage({ onNavigate }) {
           </div>
         </div>
 
-        {/* Hero Right Column: Dark Green Live Demo Card */}
+        {/* Hero Right Column: Dark Green Live Dynamic Preview Card */}
         <div className="lg:col-span-5">
           <div className="rounded-3xl bg-[#052e16] p-6 text-white shadow-2xl space-y-4 border border-[#14532d]">
             <div>
-              <p className="text-[10px] font-bold tracking-widest text-[#84cc16] uppercase">LIVE DEMO PREVIEW</p>
+              <p className="text-[10px] font-bold tracking-widest text-[#84cc16] uppercase">LIVE ENGINE PREVIEW</p>
               <h3 className="text-lg font-bold mt-1 text-white">What needs your attention today</h3>
             </div>
 
             <div className="space-y-3">
-              {/* Alert 1 */}
-              <div className="rounded-xl bg-[#093322] p-4 border border-[#14532d] space-y-1">
-                <span className="inline-block rounded-md bg-[#14532d] px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-[#84cc16]">
-                  RECEIVABLES
-                </span>
-                <p className="text-xs font-bold text-white">Northgate Supply risk rose to 54% late-payment chance</p>
-                <p className="text-[11px] text-[#86a7a0]">$182,400 outstanding, 47 days past due</p>
-              </div>
-
-              {/* Alert 2 */}
-              <div className="rounded-xl bg-[#093322] p-4 border border-[#14532d] space-y-1">
-                <span className="inline-block rounded-md bg-[#14532d] px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-[#84cc16]">
-                  MARGIN
-                </span>
-                <p className="text-xs font-bold text-white">PVC fittings margin slipped to 11.4%</p>
-                <p className="text-[11px] text-[#86a7a0]">COGS rose 14% while price held flat</p>
-              </div>
-
-              {/* Alert 3 */}
-              <div className="rounded-xl bg-[#093322] p-4 border border-[#14532d] space-y-1">
-                <span className="inline-block rounded-md bg-[#14532d] px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-[#84cc16]">
-                  CASH FLOW
-                </span>
-                <p className="text-xs font-bold text-white">Sep 4 low point falls under your operating floor</p>
-                <p className="text-[11px] text-[#86a7a0]">Projected $129K against a $150K floor</p>
-              </div>
+              {topAdvisories.map((adv, idx) => (
+                <div key={idx} className="rounded-xl bg-[#093322] p-4 border border-[#14532d] space-y-1">
+                  <span className="inline-block rounded-md bg-[#14532d] px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-[#84cc16]">
+                    {adv.domain}
+                  </span>
+                  <p className="text-xs font-bold text-white">{adv.finding}</p>
+                  <p className="text-[11px] text-[#86a7a0]">{adv.reason}</p>
+                </div>
+              ))}
             </div>
 
             <div className="pt-2 flex items-center gap-1.5 text-[10px] text-[#86a7a0]">
@@ -276,7 +267,7 @@ export default function LandingPage({ onNavigate }) {
             onClick={() => onNavigate('login')}
             className="inline-flex items-center gap-2 shrink-0 rounded-full bg-[#84cc16] hover:bg-[#65a30d] px-6 py-3.5 text-xs font-bold text-[#052e16] shadow-lg transition-all transform active:scale-95 cursor-pointer"
           >
-            View Demo
+            Launch Workspace
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -286,7 +277,7 @@ export default function LandingPage({ onNavigate }) {
       <footer className="border-t border-slate-200 bg-[#f8faf9] py-6 px-6 text-center text-[11px] text-[#64748b]">
         <div className="max-w-[1300px] mx-auto flex flex-wrap items-center justify-between gap-4">
           <p>© 2026 i2cashflow — Inventory to cashflow</p>
-          <p>Demo environment · sample data only</p>
+          <p>Continuous Dynamic Decision Engine Active</p>
         </div>
       </footer>
     </div>

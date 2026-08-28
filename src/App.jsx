@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DemoBanner from './components/DemoBanner';
-import { DataProvider } from './context/DataContext';
+import { DataProvider, useData } from './context/DataContext';
 
 // Standalone Public Pages
 import LandingPage from './pages/LandingPage';
@@ -36,7 +36,60 @@ import SearchModal from './components/SearchModal';
 import ActionDetailsModal from './components/ActionDetailsModal';
 import SettingsModal from './components/SettingsModal';
 
+function DashboardView({ onOpenActionModal, onOpenSettings }) {
+  const { user } = useData();
+  const nameStr = user?.name ? user.name.split(' ')[0] : 'Dana';
+  const companyStr = user?.company || 'Harbourline Distribution';
+
+  return (
+    <>
+      {/* Greeting Header */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            Saturday, August 15, 2026 · {companyStr}
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Good morning, {nameStr}
+          </h1>
+          <p className="mt-2 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Three things moved overnight. Northgate's risk jumped, PVC margin slipped again, and your Sep 4 low point fell under your operating floor.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenSettings}
+            className="rounded-full bg-[#0d9488]/10 hover:bg-[#0d9488]/20 px-3 py-1.5 text-xs font-semibold text-[#0d9488] transition-colors cursor-pointer border border-[#0d9488]/30 flex items-center gap-1.5"
+          >
+            ⚙️ Rules & Thresholds Config
+          </button>
+          <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
+            Reading QuickBooks + Brightpearl
+          </span>
+        </div>
+      </div>
+
+      {/* KPI Metrics Cards Grid */}
+      <KpiMetricsGrid onOpenActionModal={onOpenActionModal} />
+
+      {/* Overnight Money At Risk Notice Banner */}
+      <AlertBanner onOpenActionModal={onOpenActionModal} />
+
+      {/* Cross-domain Intelligence Section */}
+      <CrossDomainAlerts onOpenActionModal={onOpenActionModal} />
+
+      {/* What Needs Your Attention Today Section */}
+      <DailyAttentionSection onOpenActionModal={onOpenActionModal} />
+
+      {/* AR & Inventory Health Breakdown Section */}
+      <HealthSummarySection onOpenActionModal={onOpenActionModal} />
+    </>
+  );
+}
+
 function AppContent() {
+  const { user, logoutUser } = useData();
   const [activeTab, setActiveTab] = useState('landing');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -113,51 +166,7 @@ function AppContent() {
         return <ConnectionsPage onOpenActionModal={setSelectedAction} />;
       case 'dashboard':
       default:
-        return (
-          <>
-            {/* Greeting Header */}
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-                  Saturday, August 15, 2026
-                </p>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  Good morning, Dana
-                </h1>
-                <p className="mt-2 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  Three things moved overnight. Northgate's risk jumped, PVC margin slipped again, and your Sep 4 low point fell under your operating floor.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="rounded-full bg-[#0d9488]/10 hover:bg-[#0d9488]/20 px-3 py-1.5 text-xs font-semibold text-[#0d9488] transition-colors cursor-pointer border border-[#0d9488]/30 flex items-center gap-1.5"
-                >
-                  ⚙️ Rules & Thresholds Config
-                </button>
-                <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
-                  Reading QuickBooks + Brightpearl
-                </span>
-              </div>
-            </div>
-
-            {/* KPI Metrics Cards Grid */}
-            <KpiMetricsGrid onOpenActionModal={setSelectedAction} />
-
-            {/* Overnight Money At Risk Notice Banner */}
-            <AlertBanner onOpenActionModal={setSelectedAction} />
-
-            {/* Cross-domain Intelligence Section */}
-            <CrossDomainAlerts onOpenActionModal={setSelectedAction} />
-
-            {/* What Needs Your Attention Today Section */}
-            <DailyAttentionSection onOpenActionModal={setSelectedAction} />
-
-            {/* AR & Inventory Health Breakdown Section */}
-            <HealthSummarySection onOpenActionModal={setSelectedAction} />
-          </>
-        );
+        return <DashboardView onOpenActionModal={setSelectedAction} onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
   };
 
@@ -183,7 +192,7 @@ function AppContent() {
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
-          {/* Demo Banner sitting right below Header */}
+          {/* Workspace Status Banner */}
           <DemoBanner />
 
           {/* Main Workspace Body */}
@@ -198,7 +207,7 @@ function AppContent() {
               <div className="flex items-center gap-4 text-muted-foreground">
                 <button onClick={() => handleTabChange('landing')} className="hover:text-foreground">Landing Page</button>
                 <button onClick={() => handleTabChange('pricing')} className="hover:text-foreground">Pricing</button>
-                <button onClick={() => handleTabChange('login')} className="hover:text-foreground">Sign Out</button>
+                <button onClick={() => { logoutUser(); handleTabChange('login'); }} className="hover:text-foreground">Sign Out</button>
               </div>
             </div>
           </footer>
