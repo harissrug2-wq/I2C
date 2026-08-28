@@ -1,20 +1,25 @@
 import React from 'react';
-import { Network, ArrowUpRight, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
+import { Network, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function CrossDomainAlerts({ onOpenActionModal }) {
+  const { sys2, sys4, sys5 } = useData();
+
+  const hostageCust = sys4.collectionQueue.find(c => c.inventoryDeliveredValue > 0) || { name: 'Anchor Distributors', balance: 14200, inventoryDeliveredValue: 6400 };
+
   const alerts = [
     {
       id: 'anchor',
       tag: 'AR × Inventory',
       domainBadge: 'Cross-domain',
       metricLabel: 'Recoverable stock',
-      metricValue: '$6,400',
+      metricValue: `$${hostageCust.inventoryDeliveredValue.toLocaleString()}`,
       borderClass: 'border-l-4 border-l-[#ef4444] border-t border-r border-b border-border',
-      title: 'Anchor Distributors: $14,200 balance, 187 days overdue. Write-off economics justified — but don\'t write off blind.',
-      description: 'Brightpearl shows $6,400 of inventory was delivered on the unpaid invoices (INV-3141, INV-3187). A financial write-off would ignore recoverable physical stock.',
-      recommendation: 'Two-step: (1) send formal demand for return of unsold inventory within 30 days, (2) write off only the residual ~$7,800 after recovery.',
+      title: `${hostageCust.name}: $${hostageCust.balance.toLocaleString()} balance overdue. Write-off economics justified — but don't write off blind.`,
+      description: `Brightpearl shows $${hostageCust.inventoryDeliveredValue.toLocaleString()} of inventory was delivered on the unpaid invoices. A financial write-off would ignore recoverable physical stock.`,
+      recommendation: `Two-step: (1) send formal demand for return of unsold inventory within 30 days, (2) write off only the residual ~$${(hostageCust.balance - hostageCust.inventoryDeliveredValue).toLocaleString()} after recovery.`,
       confidence: '72% confidence',
-      evidence: ['AR aging · Anchor Distributors', 'Brightpearl delivery lines'],
+      evidence: [`AR aging · ${hostageCust.name}`, 'Brightpearl delivery lines'],
       primaryAction: 'Pause Order & Request Return',
       secondaryAction: 'View Details'
     },
@@ -23,10 +28,10 @@ export default function CrossDomainAlerts({ onOpenActionModal }) {
       tag: 'AR × Inventory',
       domainBadge: 'Cross-domain',
       metricLabel: 'Exposure',
-      metricValue: '$270K',
+      metricValue: `$${(sys4.moneyAtRisk / 1000).toFixed(0)}K`,
       borderClass: 'border-l-4 border-l-[#f59e0b] border-t border-r border-b border-border',
-      title: 'You\'re financing your riskiest customers\' inventory.',
-      description: '$180,400 of receivables sits with four slow-payers whose lines are the same SKUs on the $90,000 Meridian reorder landing Sep 2. You buy the stock in 30 days and get paid in 61.',
+      title: "You're financing your riskiest customers' inventory.",
+      description: `$${(sys4.moneyAtRisk * 0.9).toFixed(0)} of receivables sits with slow-payers whose lines are the same SKUs on the $90,000 Meridian reorder landing Sep 2. You buy the stock in 30 days and get paid in 61.`,
       recommendation: 'Review terms with Northgate and Sierra Mechanical before the next shipment releases, or split the reorder into two half lots.',
       confidence: '88% confidence',
       evidence: ['AR aging · 4 accounts', 'Brightpearl reorder queue'],
@@ -38,10 +43,10 @@ export default function CrossDomainAlerts({ onOpenActionModal }) {
       tag: 'Margin × Risk',
       domainBadge: 'Cross-domain',
       metricLabel: 'True margin',
-      metricValue: '29.8% → 24.6%',
+      metricValue: `${sys5.trueMarginSkus[1]?.grossMarginPercent || 29.8}% → ${sys5.trueMarginSkus[1]?.trueMarginPercent || 24.6}%`,
       borderClass: 'border-l-4 border-l-[#0d9488] border-t border-r border-b border-border',
       title: 'Your best margins are your riskiest cash.',
-      description: '60% of THHN Wire volume — your healthiest line at 29.8% — ships to elevated-risk accounts paying 47 days on average. Headline margin holds; realised margin after carrying cost is 24.6%.',
+      description: `THHN Wire volume ships to elevated-risk accounts paying 47 days on average. Headline margin holds at ${sys5.trueMarginSkus[1]?.grossMarginPercent || 29.8}%; realised margin after carrying cost is ${sys5.trueMarginSkus[1]?.trueMarginPercent || 24.6}%.`,
       recommendation: 'Tighten terms on the four elevated-risk buyers of this line before extending more credit against it.',
       confidence: '91% confidence',
       evidence: ['MarginSense line margin', 'PayScore payment behaviour'],

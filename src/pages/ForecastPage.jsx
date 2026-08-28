@@ -1,23 +1,15 @@
 import React, { useState } from 'react';
 import { Sparkles, ChevronDown, Network, ShieldAlert, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
-
-const forecast30Data = [
-  { day: 'Aug 15', cash: 1284900, bandLow: 1250000, bandHigh: 1310000 },
-  { day: 'Aug 18', cash: 1120000, bandLow: 1080000, bandHigh: 1160000 },
-  { day: 'Aug 21', cash: 980000, bandLow: 930000, bandHigh: 1020000 },
-  { day: 'Aug 25', cash: 750000, bandLow: 690000, bandHigh: 810000 },
-  { day: 'Aug 29', cash: 520000, bandLow: 450000, bandHigh: 590000 },
-  { day: 'Sep 2', cash: 310000, bandLow: 240000, bandHigh: 380000 },
-  { day: 'Sep 4', cash: 218400, bandLow: 150000, bandHigh: 280000 },
-  { day: 'Sep 8', cash: 450000, bandLow: 380000, bandHigh: 520000 },
-  { day: 'Sep 12', cash: 680000, bandLow: 600000, bandHigh: 760000 },
-  { day: 'Sep 15', cash: 890000, bandLow: 800000, bandHigh: 980000 },
-];
+import { useData } from '../context/DataContext';
 
 export default function ForecastPage({ onOpenActionModal }) {
+  const { sys3, thresholds } = useData();
   const [horizon, setHorizon] = useState('30');
   const [showDriverDetails, setShowDriverDetails] = useState(true);
+
+  const horizonDays = Number(horizon);
+  const filteredPoints = sys3.points.filter((_, idx) => (idx * 3) <= horizonDays);
 
   return (
     <div className="space-y-6">
@@ -48,20 +40,22 @@ export default function ForecastPage({ onOpenActionModal }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <article className="card-surface p-5">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Cash today</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">$1,284,900</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">${sys3.cashToday.toLocaleString()}</p>
           <p className="mt-1 text-xs text-muted-foreground">Across 3 operating accounts</p>
         </article>
 
         <article className="card-surface border-l-4 border-l-[#ef4444] p-5">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Projected low point</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-[#ef4444]">$218,400</p>
-          <p className="mt-1 text-xs text-muted-foreground">$31,600 below your $250,000 floor</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-[#ef4444]">${sys3.lowPointCash.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {sys3.floorGap > 0 ? `$${sys3.floorGap.toLocaleString()} below your $${thresholds.operating_cash_floor.toLocaleString()} floor` : 'Above operating floor'}
+          </p>
         </article>
 
         <article className="card-surface p-5">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">When</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">Sep 4, 2026</p>
-          <p className="mt-1 text-xs text-muted-foreground">20 days out</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">{sys3.lowPointDay}, 2026</p>
+          <p className="mt-1 text-xs text-muted-foreground">{sys3.lowPointDaysOut} days out</p>
         </article>
       </div>
 
@@ -104,7 +98,7 @@ export default function ForecastPage({ onOpenActionModal }) {
 
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={forecast30Data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={filteredPoints} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="forecastGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0d9488" stopOpacity={0.4}/>
@@ -112,7 +106,7 @@ export default function ForecastPage({ onOpenActionModal }) {
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v/1000}k`} />
+              <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `$${Math.round(v/1000)}k`} />
               <Tooltip 
                 formatter={(value) => [`$${value.toLocaleString()}`, 'Projected Cash']} 
                 contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
@@ -128,8 +122,12 @@ export default function ForecastPage({ onOpenActionModal }) {
           className="mt-4 flex w-full flex-wrap items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left transition-colors hover:bg-surface/70 cursor-pointer ring-1 ring-border"
         >
           <span className="size-2.5 shrink-0 rounded-full bg-[#ef4444]" />
-          <span className="text-sm font-semibold text-foreground">Low point Day 20 · Sep 4, 2026 · $218,400</span>
-          <span className="text-xs text-muted-foreground">$31,600 below your $250,000 floor</span>
+          <span className="text-sm font-semibold text-foreground">
+            Low point Day {sys3.lowPointDaysOut} · {sys3.lowPointDay}, 2026 · ${sys3.lowPointCash.toLocaleString()}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {sys3.floorGap > 0 ? `$${sys3.floorGap.toLocaleString()} below your $${thresholds.operating_cash_floor.toLocaleString()} floor` : 'Operating floor secured'}
+          </span>
           <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488]">
             What's driving this
             <ChevronDown className={`size-3.5 transition-transform ${showDriverDetails ? 'rotate-180' : ''}`} />

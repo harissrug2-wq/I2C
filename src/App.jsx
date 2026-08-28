@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DemoBanner from './components/DemoBanner';
+import { DataProvider } from './context/DataContext';
 
 // Dashboard components
 import KpiMetricsGrid from './components/KpiMetricsGrid';
@@ -28,8 +29,9 @@ import ConnectionsPage from './pages/ConnectionsPage';
 import AskAiModal from './components/AskAiModal';
 import SearchModal from './components/SearchModal';
 import ActionDetailsModal from './components/ActionDetailsModal';
+import SettingsModal from './components/SettingsModal';
 
-export default function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -37,6 +39,7 @@ export default function App() {
   // Modals state
   const [isAskAiOpen, setIsAskAiOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null);
 
   // Sync activeTab with URL hash or pathname for navigation
@@ -107,9 +110,17 @@ export default function App() {
                 </p>
               </div>
 
-              <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
-                Reading QuickBooks + Brightpearl
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="rounded-full bg-[#0d9488]/10 hover:bg-[#0d9488]/20 px-3 py-1.5 text-xs font-semibold text-[#0d9488] transition-colors cursor-pointer border border-[#0d9488]/30 flex items-center gap-1.5"
+                >
+                  ⚙️ Rules & Thresholds Config
+                </button>
+                <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
+                  Reading QuickBooks + Brightpearl
+                </span>
+              </div>
             </div>
 
             {/* KPI Metrics Cards Grid */}
@@ -150,6 +161,7 @@ export default function App() {
             onToggleSidebar={toggleSidebar}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenAskAi={() => setIsAskAiOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
           {/* Demo Banner sitting right below Header */}
@@ -182,6 +194,15 @@ export default function App() {
         onSelectResult={(item) => setSelectedAction({ title: item.name, details: item.info })}
       />
       <ActionDetailsModal actionData={selectedAction} onClose={() => setSelectedAction(null)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <DataProvider>
+      <AppContent />
+    </DataProvider>
   );
 }

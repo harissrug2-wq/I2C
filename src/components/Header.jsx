@@ -1,7 +1,7 @@
 import React from 'react';
 import { PanelLeft, Search, Sparkles, RefreshCw, Bell, Settings } from 'lucide-react';
 
-export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi }) {
+export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onOpenSettings }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
       <button
@@ -59,10 +59,11 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi }) {
 
         {/* Settings */}
         <button 
+          onClick={onOpenSettings}
           className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-          title="Settings"
+          title="Rules & Thresholds Settings"
         >
-          <Settings className="size-4" />
+          <Settings className="size-4 text-[#0d9488]" />
         </button>
       </div>
     </header>

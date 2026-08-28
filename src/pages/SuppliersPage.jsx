@@ -1,13 +1,9 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function SuppliersPage({ onOpenActionModal }) {
-  const suppliers = [
-    { name: 'Meridian Pipe Works', ap: '$90,000', terms: 'COD / Net 15', leadTime: '14 days', status: 'Reorder Pending' },
-    { name: 'Orchid Industrial Materials', ap: '$64,200', terms: '2/10 Net 30', leadTime: '7 days', status: 'Active Discount' },
-    { name: 'Apex Resins Corp', ap: '$42,500', terms: '2/10 Net 30', leadTime: '10 days', status: 'Active Discount' },
-    { name: 'Cascade Metals Group', ap: '$27,800', terms: '2/10 Net 30', leadTime: '5 days', status: 'Active Discount' },
-  ];
+  const { vendors, sys4 } = useData();
 
   return (
     <div className="space-y-6">
@@ -18,10 +14,10 @@ export default function SuppliersPage({ onOpenActionModal }) {
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <Building2 className="size-6 text-[#0d9488]" />
-            Suppliers & Vendors
+            Suppliers & Vendors ({vendors.length})
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            Supplier accounts, payment terms, and scheduled lot purchase deliveries.
+            Supplier accounts, payment terms, and working capital gap analysis (WC Gap: {sys4.wcGapDays} days).
           </p>
         </div>
       </div>
@@ -38,15 +34,15 @@ export default function SuppliersPage({ onOpenActionModal }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {suppliers.map((s, i) => (
-              <tr key={i} className="hover:bg-surface/50 transition-colors">
+            {vendors.map((s) => (
+              <tr key={s.id} className="hover:bg-surface/50 transition-colors">
                 <td className="p-3.5 font-bold text-foreground">{s.name}</td>
-                <td className="p-3.5 font-semibold text-foreground">{s.ap}</td>
+                <td className="p-3.5 font-semibold text-foreground">${s.apBalance.toLocaleString()}</td>
                 <td className="p-3.5 text-muted-foreground">{s.terms}</td>
-                <td className="p-3.5 text-muted-foreground">{s.leadTime}</td>
+                <td className="p-3.5 text-muted-foreground">{s.leadTimeDays} days</td>
                 <td className="p-3.5 text-right">
                   <span className="bg-[#0d9488]/10 text-[#0d9488] px-2 py-0.5 rounded-full font-semibold text-[10px]">
-                    {s.status}
+                    {s.hasEarlyPay ? 'Active Discount Window' : 'Reorder Pending'}
                   </span>
                 </td>
               </tr>

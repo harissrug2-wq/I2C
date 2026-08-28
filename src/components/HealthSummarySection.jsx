@@ -1,7 +1,18 @@
 import React from 'react';
 import { ArrowUpRight, ShieldAlert, Package, AlertCircle } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function HealthSummarySection({ onOpenActionModal }) {
+  const { sys2, sys4, customers } = useData();
+
+  const criticalAR = sys4.collectionQueue.filter(c => c.riskScore > 60).reduce((s, c) => s + c.balance, 0);
+  const elevatedAR = sys4.collectionQueue.filter(c => c.riskScore > 30 && c.riskScore <= 60).reduce((s, c) => s + c.balance, 0);
+  const healthyAR = Math.max(0, sys4.totalAR - criticalAR - elevatedAR);
+
+  const critPercent = Math.round((criticalAR / (sys4.totalAR || 1)) * 100);
+  const elevPercent = Math.round((elevatedAR / (sys4.totalAR || 1)) * 100);
+  const healthPercent = Math.round((healthyAR / (sys4.totalAR || 1)) * 100);
+
   return (
     <section className="mt-8 grid gap-4 lg:grid-cols-2">
       {/* Card 1: AR Risk Summary */}
@@ -14,14 +25,14 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 AR risk summary
               </h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                $774,790 outstanding across 8 accounts
+                ${sys4.totalAR.toLocaleString()} outstanding across {customers.length} accounts
               </p>
             </div>
             <button
               onClick={() => onOpenActionModal({
                 title: 'Collections Priority View',
                 type: 'collections',
-                details: 'Showing prioritized collection queue for 8 accounts.'
+                details: `Showing prioritized collection queue for ${customers.length} accounts.`
               })}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[#0d9488] hover:underline cursor-pointer"
             >
@@ -32,9 +43,9 @@ export default function HealthSummarySection({ onOpenActionModal }) {
           {/* Progress Stack Bar */}
           <div className="mt-4">
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-surface ring-1 ring-border">
-              <div className="bg-[#ef4444] h-full" style={{ width: '42%' }} title="Critical: 42%" />
-              <div className="bg-[#f59e0b] h-full" style={{ width: '28%' }} title="Elevated: 28%" />
-              <div className="bg-[#16a34a] h-full" style={{ width: '30%' }} title="Healthy: 30%" />
+              <div className="bg-[#ef4444] h-full" style={{ width: `${critPercent}%` }} title={`Critical: ${critPercent}%`} />
+              <div className="bg-[#f59e0b] h-full" style={{ width: `${elevPercent}%` }} title={`Elevated: ${elevPercent}%`} />
+              <div className="bg-[#16a34a] h-full" style={{ width: `${healthPercent}%` }} title={`Healthy: ${healthPercent}%`} />
             </div>
           </div>
 
@@ -45,8 +56,8 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#ef4444]" />
                 Critical
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$327K</p>
-              <p className="text-[10px] text-muted-foreground">2 accounts · 42%</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(criticalAR / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-muted-foreground">{critPercent}%</p>
             </div>
 
             <div className="rounded-lg bg-surface p-2.5 border border-border/60">
@@ -54,8 +65,8 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#f59e0b]" />
                 Elevated
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$217K</p>
-              <p className="text-[10px] text-muted-foreground">3 accounts · 28%</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(elevatedAR / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-muted-foreground">{elevPercent}%</p>
             </div>
 
             <div className="rounded-lg bg-surface p-2.5 border border-border/60">
@@ -63,14 +74,14 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#16a34a]" />
                 Healthy
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$231K</p>
-              <p className="text-[10px] text-muted-foreground">3 accounts · 30%</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(healthyAR / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-muted-foreground">{healthPercent}%</p>
             </div>
           </div>
         </div>
 
         <p className="mt-4 rounded-lg bg-[#ef4444]/10 p-3 text-xs text-[#ef4444] font-medium ring-1 ring-[#ef4444]/20">
-          42% of your receivables now sit in the Critical tier, up from 31% a month ago. Two accounts drive all of it.
+          {critPercent}% of your receivables sit in the Critical risk tier. Two accounts drive all of it.
         </p>
       </article>
 
@@ -84,7 +95,7 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 Inventory health
               </h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                $2.09M of inventory value read from Brightpearl
+                ${(sys2.totalValue / 1000000).toFixed(2)}M of inventory value read from Brightpearl
               </p>
             </div>
             <button
@@ -102,9 +113,9 @@ export default function HealthSummarySection({ onOpenActionModal }) {
           {/* Progress Stack Bar */}
           <div className="mt-4">
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-surface ring-1 ring-border">
-              <div className="bg-[#16a34a] h-full" style={{ width: '68%' }} title="Healthy stock: 68%" />
-              <div className="bg-[#f59e0b] h-full" style={{ width: '21%' }} title="Overstocked: 21%" />
-              <div className="bg-[#ef4444] h-full" style={{ width: '11%' }} title="Dead stock: 11%" />
+              <div className="bg-[#16a34a] h-full" style={{ width: `${sys2.healthyPercent}%` }} title={`Healthy stock: ${sys2.healthyPercent}%`} />
+              <div className="bg-[#f59e0b] h-full" style={{ width: `${sys2.overstockedPercent}%` }} title={`Overstocked: ${sys2.overstockedPercent}%`} />
+              <div className="bg-[#ef4444] h-full" style={{ width: `${sys2.deadStockPercent}%` }} title={`Dead stock: ${sys2.deadStockPercent}%`} />
             </div>
           </div>
 
@@ -115,8 +126,8 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#16a34a]" />
                 Healthy
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$1.42M</p>
-              <p className="text-[10px] text-muted-foreground">68% of inventory</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(sys2.healthyValue / 1000000).toFixed(2)}M</p>
+              <p className="text-[10px] text-muted-foreground">{sys2.healthyPercent}% of inventory</p>
             </div>
 
             <div className="rounded-lg bg-surface p-2.5 border border-border/60">
@@ -124,8 +135,8 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#f59e0b]" />
                 Overstocked
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$438K</p>
-              <p className="text-[10px] text-muted-foreground">21% · 2 SKUs &gt;12m</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(sys2.overstockedValue / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-muted-foreground">{sys2.overstockedPercent}%</p>
             </div>
 
             <div className="rounded-lg bg-surface p-2.5 border border-border/60">
@@ -133,8 +144,8 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 <span className="size-2 rounded-full bg-[#ef4444]" />
                 Dead stock
               </div>
-              <p className="mt-1 text-lg font-bold text-foreground">$229K</p>
-              <p className="text-[10px] text-muted-foreground">11% · &gt;90d quiet</p>
+              <p className="mt-1 text-lg font-bold text-foreground">${(sys2.deadStockValue / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-muted-foreground">{sys2.deadStockPercent}% · &gt;180d quiet</p>
             </div>
           </div>
         </div>
@@ -146,7 +157,7 @@ export default function HealthSummarySection({ onOpenActionModal }) {
             2 SKUs frozen
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-[#16a34a]/10 px-3 py-1 text-[#16a34a] font-semibold ring-1 ring-[#16a34a]/20">
-            $329K recoverable cash
+            ${((sys2.overstockedValue + sys2.deadStockValue) / 1000).toFixed(0)}K recoverable cash
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-[#ef4444]/10 px-3 py-1 text-[#ef4444] font-semibold ring-1 ring-[#ef4444]/20">
             1 stockout in 24 days

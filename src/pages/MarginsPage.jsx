@@ -1,12 +1,19 @@
 import React from 'react';
 import { Receipt, TrendingDown, ArrowUpRight } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function MarginsPage({ onOpenActionModal }) {
-  const marginSkus = [
-    { sku: 'PVC Pipe 2" Schedule 40', currentMargin: '16.6%', targetMargin: '23.8%', change: '-7.2 pts', cause: 'Meridian lot cost +14% not passed through', impact: '$31,200/yr', action: 'Adjust Price (+7.2%)' },
-    { sku: 'THHN Wire 12 AWG Copper', currentMargin: '24.6%', targetMargin: '29.8%', change: '-5.2 pts', cause: 'Carrying cost & slow pay by 60% of buyers', impact: '$18,400/yr', action: 'Tighten Credit Terms' },
-    { sku: 'Copper Fitting 3/4" Elbow', currentMargin: '28.1%', targetMargin: '31.0%', change: '-2.9 pts', cause: 'Freight surcharge increase', impact: '$9,600/yr', action: 'Review Shipping Costs' },
-  ];
+  const { sys5, thresholds } = useData();
+
+  const marginSkus = sys5.trueMarginSkus.slice(0, 3).map((item) => ({
+    sku: item.name,
+    currentMargin: `${item.trueMarginPercent}%`,
+    targetMargin: `${item.grossMarginPercent}%`,
+    change: `-${item.marginErosionPts} pts`,
+    cause: `Carrying cost delay (${Math.round(thresholds.cost_of_capital * 100)}% cost of capital) across slow-paying accounts.`,
+    impact: `$${Math.round(item.inventoryValue * 0.08).toLocaleString()}/yr`,
+    action: item.marginErosionPts > 4.0 ? 'Tighten Credit Terms' : 'Adjust Price List'
+  }));
 
   return (
     <div className="space-y-6">
@@ -17,10 +24,10 @@ export default function MarginsPage({ onOpenActionModal }) {
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <Receipt className="size-6 text-[#ef4444]" />
-            Margin Priority & Cost Creep
+            Margin Priority & Cost Creep (System 5)
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            SKUs with realized gross margin erosion due to supplier price increases, carrying costs, or unadjusted price lists.
+            SKUs with realized gross margin erosion due to capital carrying costs, supplier price changes, or unadjusted price lists.
           </p>
         </div>
       </div>
@@ -37,7 +44,7 @@ export default function MarginsPage({ onOpenActionModal }) {
 
             <h3 className="text-base font-bold text-foreground">{item.sku}</h3>
             <p className="text-xs text-muted-foreground">
-              Realized Margin: <span className="font-bold text-foreground">{item.currentMargin}</span> (Target {item.targetMargin})
+              Realized True Margin: <span className="font-bold text-foreground">{item.currentMargin}</span> (Headline {item.targetMargin})
             </p>
 
             <div className="bg-surface p-3 rounded-lg border border-border text-xs space-y-1">

@@ -1,33 +1,19 @@
 import React from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function DailyAttentionSection({ onOpenActionModal }) {
-  const items = [
-    {
-      id: 'ar-attention',
-      category: 'Receivables',
-      title: 'Northgate Supply has stretched from 34 to 52 average days to pay, with $96k now past 60 days',
-      desc: 'This is the single largest movement in your AR book this month. Accounts with this pattern paid 19 days sooner when contacted before day 45.',
-      actionLabel: 'Draft Collection Email',
-      border: 'border-l-4 border-l-[#ef4444]'
-    },
-    {
-      id: 'margin-attention',
-      category: 'Margins',
-      title: 'PVC Pipe 2" Schedule 40 margin fell 7.2 points while list price held flat',
-      desc: 'Meridian\'s lot cost rose 14% since February and none of it was passed through. The gap is worth about $31,200 a year on this SKU alone.',
-      actionLabel: 'Adjust Price (+7.2%)',
-      border: 'border-l-4 border-l-[#f59e0b]'
-    },
-    {
-      id: 'ap-attention',
-      category: 'Payables',
-      title: 'Three early-payment discounts worth $3,653 close within the next 7 days',
-      desc: 'Cash position supports capturing all three. Sequencing Orchid on Aug 21 keeps the Sep 4 forecast low point above your $250k floor.',
-      actionLabel: 'Schedule 3 Payments ($3,653 savings)',
-      border: 'border-l-4 border-l-[#16a34a]'
-    }
-  ];
+  const { advisories } = useData();
+
+  const displayItems = advisories.slice(0, 3).map((adv, idx) => ({
+    id: adv.id || `adv-${idx}`,
+    category: adv.domain || adv.system,
+    title: adv.finding,
+    desc: adv.reason,
+    actionLabel: adv.recommendedAction,
+    border: adv.priority === 'CRITICAL' ? 'border-l-4 border-l-[#ef4444]' :
+            adv.priority === 'HIGH' ? 'border-l-4 border-l-[#f59e0b]' : 'border-l-4 border-l-[#16a34a]'
+  }));
 
   return (
     <section className="mt-8">
@@ -50,7 +36,7 @@ export default function DailyAttentionSection({ onOpenActionModal }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {items.map((item) => (
+        {displayItems.map((item) => (
           <div 
             key={item.id} 
             className={`card-surface p-5 flex flex-col justify-between hover:border-primary/40 transition-colors ${item.border}`}

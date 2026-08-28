@@ -1,39 +1,13 @@
 import React from 'react';
-import { ShieldAlert, ArrowUpRight, CheckCircle2, UserX, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function AtRiskPage({ onOpenActionModal }) {
-  const atRiskAccounts = [
-    {
-      name: 'Northgate Supply',
-      amount: '$18,000',
-      totalBalance: '$96,000',
-      daysOverdue: 92,
-      payScore: 42,
-      riskLevel: 'Critical',
-      reason: 'Slipped past 90 days threshold. Payment velocity slowed by 53%.',
-      recAction: 'Draft Demand Letter & Hold Shipments'
-    },
-    {
-      name: 'Cedar Building Materials',
-      amount: '$6,000',
-      totalBalance: '$41,500',
-      daysOverdue: 64,
-      payScore: 71,
-      riskLevel: 'Elevated',
-      reason: 'PayScore climbed to 71. Multiple partial payments recorded.',
-      recAction: 'Issue 14-day Payment Reminder'
-    },
-    {
-      name: 'Anchor Distributors',
-      amount: '$5,000',
-      totalBalance: '$14,200',
-      daysOverdue: 187,
-      payScore: 28,
-      riskLevel: 'Critical',
-      reason: '$6,400 physical inventory delivered on unpaid invoices is recoverable.',
-      recAction: 'Request Inventory Return'
-    }
-  ];
+  const { sys4 } = useData();
+
+  const atRiskAccounts = sys4.collectionQueue
+    .filter(c => c.riskScore > 30 || c.pastDue > 0)
+    .slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -44,43 +18,45 @@ export default function AtRiskPage({ onOpenActionModal }) {
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <ShieldAlert className="size-6 text-[#ef4444]" />
-            Money at Risk ($29K)
+            Money at Risk (${(sys4.moneyAtRisk / 1000).toFixed(0)}K)
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            3 accounts holding $29,000 in high-risk receivables out of $340,000 total open AR.
+            {atRiskAccounts.length} accounts holding ${sys4.moneyAtRisk.toLocaleString()} in high-risk receivables out of ${sys4.totalAR.toLocaleString()} total open AR.
           </p>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {atRiskAccounts.map((item, idx) => (
-          <div key={idx} className="card-surface p-5 border-l-4 border-l-[#ef4444] space-y-3">
+        {atRiskAccounts.map((item) => (
+          <div key={item.id} className="card-surface p-5 border-l-4 border-l-[#ef4444] space-y-3">
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#ef4444] bg-[#ef4444]/10 px-2 py-0.5 rounded-full">
-                  {item.riskLevel} Risk
+                  {item.riskScore > 60 ? 'Critical' : 'Elevated'} Risk
                 </span>
                 <h3 className="text-base font-bold text-foreground mt-2">{item.name}</h3>
               </div>
-              <span className="text-xl font-bold text-[#ef4444]">{item.amount}</span>
+              <span className="text-xl font-bold text-[#ef4444]">${item.pastDue.toLocaleString()}</span>
             </div>
 
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>Total Balance: <span className="font-semibold text-foreground">{item.totalBalance}</span></p>
-              <p>Days Overdue: <span className="font-semibold text-foreground">{item.daysOverdue} days</span></p>
-              <p>i2C PayScore: <span className="font-semibold text-foreground">{item.payScore}/100</span></p>
+              <p>Total Balance: <span className="font-semibold text-foreground">${item.balance.toLocaleString()}</span></p>
+              <p>Avg Days to Pay: <span className="font-semibold text-foreground">{item.avgDaysToPay} days</span></p>
+              <p>i2C PayScore: <span className="font-semibold text-foreground">{item.riskScore}/100</span></p>
             </div>
 
             <p className="text-xs bg-surface p-2.5 rounded-lg border border-border leading-relaxed text-foreground">
-              {item.reason}
+              {item.inventoryDeliveredValue
+                ? `$${item.inventoryDeliveredValue.toLocaleString()} physical inventory delivered on unpaid invoices is recoverable.`
+                : `Account velocity delayed by ${item.avgDaysLate} days past terms.`}
             </p>
 
             <button
-              onClick={() => onOpenActionModal({ title: item.recAction, details: item.name })}
+              onClick={() => onOpenActionModal({ title: item.action, details: item.name })}
               className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0d9488] hover:bg-[#0f766e] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer"
             >
               <CheckCircle2 className="size-3.5" />
-              {item.recAction}
+              {item.action}
             </button>
           </div>
         ))}

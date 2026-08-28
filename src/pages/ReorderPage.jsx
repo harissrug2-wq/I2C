@@ -1,11 +1,24 @@
 import React from 'react';
 import { Boxes, AlertTriangle, ArrowRight } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function ReorderPage({ onOpenActionModal }) {
-  const reorders = [
-    { sku: 'Meridian PVC Lot #902', cost: '$90,000', landingDate: 'Sep 2, 2026', stockoutRisk: '24 days', recommendation: 'Split reorder into two $45K shipments to protect Sep 4 cash floor.' },
-    { sku: 'Copper Fitting 3/4" Bulk', cost: '$34,000', landingDate: 'Sep 14, 2026', stockoutRisk: '38 days', recommendation: 'Proceed on standard 30-day terms.' },
-  ];
+  const { sys2, sys3 } = useData();
+
+  const reorders = sys2.skus.map(p => {
+    let recommendation = `Reorder ${p.eoq || 100} units at reorder point ${p.reorderPoint} (Safety stock ${p.safetyStock}).`;
+    if (p.vendor === 'Meridian Pipe Works') {
+      recommendation = `Split reorder into two $45K shipments to protect $${sys3.lowPointCash.toLocaleString()} cash floor on ${sys3.lowPointDay}.`;
+    }
+
+    return {
+      sku: p.name,
+      cost: `$${p.inventoryValue.toLocaleString()}`,
+      landingDate: 'Sep 2, 2026',
+      stockoutRisk: `${p.stockoutDays} days`,
+      recommendation
+    };
+  }).slice(0, 2);
 
   return (
     <div className="space-y-6">
@@ -19,7 +32,7 @@ export default function ReorderPage({ onOpenActionModal }) {
             Reorder Priority & Queue
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            Brightpearl replenishment purchase orders evaluated against cash flow forecasts.
+            Brightpearl replenishment purchase orders evaluated against cash flow forecasts (System 2 & System 3).
           </p>
         </div>
       </div>
@@ -35,7 +48,7 @@ export default function ReorderPage({ onOpenActionModal }) {
             </div>
 
             <h3 className="text-base font-bold text-foreground">{r.sku}</h3>
-            <p className="text-xs text-muted-foreground">Scheduled Landing: <span className="font-semibold text-foreground">{r.landingDate}</span></p>
+            <p className="text-xs text-muted-foreground">Stockout Risk: <span className="font-semibold text-[#ef4444]">{r.stockoutRisk}</span></p>
 
             <div className="bg-surface p-3 rounded-lg border border-border text-xs">
               <span className="font-semibold text-[#0d9488] block mb-1">i2C Recommendation:</span>
