@@ -211,7 +211,7 @@ export function computeSystem2(productList, customersList, thresholds) {
     overstockedValue: overstockedVal,
     deadStockValue: deadStockVal,
     healthyPercent: Math.round((healthyVal / (totalVal || 1)) * 100),
-    overstockedPercent: Math.round((overstockedValue / (totalVal || 1)) * 100),
+    overstockedPercent: Math.round((overstockedVal / (totalVal || 1)) * 100),
     deadStockPercent: Math.round((deadStockVal / (totalVal || 1)) * 100),
   };
 }
