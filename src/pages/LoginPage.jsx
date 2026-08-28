@@ -80,7 +80,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </h1>
               <p className="text-xs text-[#64748b] leading-relaxed">
                 {isSignUp 
-                  ? 'Connect QuickBooks & Brightpearl to calculate real-time cash flow & margin intelligence.' 
+                  ? 'Start with the repaired demo dataset and enter live values manually. External integrations can be connected later.' 
                   : 'Access continuous receivables, payables, inventory velocity & cash horizon analytics.'
                 }
               </p>
@@ -90,7 +90,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             <div className="rounded-2xl bg-[#ecfccb] p-4 border border-[#bef264] flex items-start gap-3 text-xs text-[#3f6212] leading-relaxed">
               <Lock className="size-4 shrink-0 text-[#3f6212] mt-0.5" />
               <span>
-                <strong>Read-only interlock.</strong> QuickBooks and Brightpearl data is read securely without creating or modifying ledger records.
+                <strong>Manual mode.</strong> Workspace data is stored in this browser and does not write to any external accounting or inventory system.
               </span>
             </div>
 
@@ -263,7 +263,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 </div>
                 <h3 className="font-bold text-xs text-white">Read-only always</h3>
                 <p className="text-[11px] text-[#86a7a0] leading-relaxed">
-                  We read QuickBooks and Brightpearl. We never create or edit records.
+                  Manual workspace first. External connections are optional and currently disabled.
                 </p>
               </div>
             </div>

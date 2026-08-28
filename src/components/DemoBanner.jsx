@@ -17,7 +17,7 @@ export default function DemoBanner() {
 
       <div className="flex items-center gap-1.5 text-[11px] text-[#a7f3d0]">
         <ShieldCheck className="size-3.5 text-[#bef264]" />
-        <span>QuickBooks + Brightpearl Read-Only Interlock</span>
+        <span>Manual workspace · local browser persistence</span>
       </div>
     </div>
   );

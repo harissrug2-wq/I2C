@@ -7,14 +7,14 @@ export default function ReorderPage({ onOpenActionModal }) {
 
   const reorders = sys2.skus.map(p => {
     let recommendation = `Reorder ${p.eoq || 100} units at reorder point ${p.reorderPoint} (Safety stock ${p.safetyStock}).`;
-    if (p.vendor === 'Meridian Pipe Works') {
-      recommendation = `Split reorder into two $45K shipments to protect $${sys3.lowPointCash.toLocaleString()} cash floor on ${sys3.lowPointDay}.`;
+    if (p.inventoryValue > 50000 && sys3.floorGap > 0) {
+      recommendation = `Stage the reorder to reduce pressure around the projected $${sys3.lowPointCash.toLocaleString()} low point on ${sys3.lowPointDay}.`;
     }
 
     return {
       sku: p.name,
       cost: `$${p.inventoryValue.toLocaleString()}`,
-      landingDate: 'Sep 2, 2026',
+      landingDate: 'Calculated from lead time',
       stockoutRisk: `${p.stockoutDays} days`,
       recommendation
     };
@@ -32,7 +32,7 @@ export default function ReorderPage({ onOpenActionModal }) {
             Reorder Priority & Queue
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            Brightpearl replenishment purchase orders evaluated against cash flow forecasts (System 2 & System 3).
+            Replenishment priorities calculated from manual inventory inputs and the cash forecast (Systems 2 & 3).
           </p>
         </div>
       </div>

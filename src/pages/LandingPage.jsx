@@ -14,8 +14,8 @@ export default function LandingPage({ onNavigate }) {
   ];
 
   // Dynamic values derived from live DataContext calculations
-  const receivablesMonitoredStr = `$${Math.round((sys4?.totalAR || 300000) / 1000)}K`;
-  const skusCount = sys2?.skus?.length || 3908;
+  const receivablesMonitoredStr = `$${Math.round((sys4?.totalAR || 0) / 1000)}K`;
+  const skusCount = sys2?.skus?.length || 0;
   const topAdvisories = advisories?.slice(0, 3) || [];
 
   return (

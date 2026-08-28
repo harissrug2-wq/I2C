@@ -17,7 +17,8 @@ import {
   Lock,
   X,
   LogOut,
-  Home
+  Home,
+  Database
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setActiveTab }) {
@@ -62,6 +63,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
     {
       label: 'DATA',
       items: [
+        { id: 'manual-data', label: 'Manual data entry', icon: Database },
         { id: 'connections', label: 'Connections', icon: PlugZap },
       ]
     }

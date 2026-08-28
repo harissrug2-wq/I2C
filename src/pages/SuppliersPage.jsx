@@ -42,7 +42,7 @@ export default function SuppliersPage({ onOpenActionModal }) {
                 <td className="p-3.5 text-muted-foreground">{s.leadTimeDays} days</td>
                 <td className="p-3.5 text-right">
                   <span className="bg-[#0d9488]/10 text-[#0d9488] px-2 py-0.5 rounded-full font-semibold text-[10px]">
-                    {s.hasEarlyPay ? 'Active Discount Window' : 'Reorder Pending'}
+                    {s.hasEarlyPay ? 'Active Discount Window' : 'Standard Terms'}
                   </span>
                 </td>
               </tr>

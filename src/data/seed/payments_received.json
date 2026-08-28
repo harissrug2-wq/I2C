@@ -1,0 +1,327 @@
+[
+  {
+    "receipt_no": "RCP-2201",
+    "customer_id": "CUS-001",
+    "payment_date": "2026-05-26",
+    "method": "ACH",
+    "amount": 68400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4321",
+        "amount": 68400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2214",
+    "customer_id": "CUS-001",
+    "payment_date": "2026-06-19",
+    "method": "Wire",
+    "amount": 72300,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4368",
+        "amount": 72300
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2247",
+    "customer_id": "CUS-001",
+    "payment_date": "2026-07-20",
+    "method": "ACH",
+    "amount": 45000,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4389",
+        "amount": 45000
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2288",
+    "customer_id": "CUS-001",
+    "payment_date": "2026-08-04",
+    "method": "ACH",
+    "amount": 30000,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4412",
+        "amount": 30000
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2192",
+    "customer_id": "CUS-002",
+    "payment_date": "2026-05-19",
+    "method": "Wire",
+    "amount": 96500,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4315",
+        "amount": 96500
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2225",
+    "customer_id": "CUS-002",
+    "payment_date": "2026-06-27",
+    "method": "Wire",
+    "amount": 82400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4370",
+        "amount": 82400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2265",
+    "customer_id": "CUS-002",
+    "payment_date": "2026-07-29",
+    "method": "Wire",
+    "amount": 71200,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4402",
+        "amount": 71200
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2210",
+    "customer_id": "CUS-003",
+    "payment_date": "2026-05-22",
+    "method": "ACH",
+    "amount": 42800,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4358",
+        "amount": 42800
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2242",
+    "customer_id": "CUS-003",
+    "payment_date": "2026-06-26",
+    "method": "ACH",
+    "amount": 58200,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4395",
+        "amount": 58200
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2271",
+    "customer_id": "CUS-003",
+    "payment_date": "2026-07-31",
+    "method": "ACH",
+    "amount": 39400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4430",
+        "amount": 39400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2205",
+    "customer_id": "CUS-004",
+    "payment_date": "2026-05-08",
+    "method": "Check",
+    "amount": 32400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4340",
+        "amount": 32400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2236",
+    "customer_id": "CUS-004",
+    "payment_date": "2026-06-09",
+    "method": "Check",
+    "amount": 28600,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4386",
+        "amount": 28600
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2262",
+    "customer_id": "CUS-004",
+    "payment_date": "2026-07-23",
+    "method": "Check",
+    "amount": 34800,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4441",
+        "amount": 34800
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2218",
+    "customer_id": "CUS-005",
+    "payment_date": "2026-05-18",
+    "method": "ACH",
+    "amount": 58200,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4372",
+        "amount": 58200
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2251",
+    "customer_id": "CUS-005",
+    "payment_date": "2026-06-23",
+    "method": "ACH",
+    "amount": 62400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4415",
+        "amount": 62400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2280",
+    "customer_id": "CUS-005",
+    "payment_date": "2026-07-27",
+    "method": "ACH",
+    "amount": 71000,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4468",
+        "amount": 71000
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2222",
+    "customer_id": "CUS-006",
+    "payment_date": "2026-05-25",
+    "method": "ACH",
+    "amount": 24800,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4380",
+        "amount": 24800
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2255",
+    "customer_id": "CUS-006",
+    "payment_date": "2026-06-26",
+    "method": "ACH",
+    "amount": 31200,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4418",
+        "amount": 31200
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2277",
+    "customer_id": "CUS-006",
+    "payment_date": "2026-08-09",
+    "method": "ACH",
+    "amount": 28900,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4452",
+        "amount": 28900
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2200",
+    "customer_id": "CUS-007",
+    "payment_date": "2026-05-30",
+    "method": "Check",
+    "amount": 41500,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4348",
+        "amount": 41500
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2231",
+    "customer_id": "CUS-007",
+    "payment_date": "2026-07-04",
+    "method": "Check",
+    "amount": 38200,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4381",
+        "amount": 38200
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2264",
+    "customer_id": "CUS-007",
+    "payment_date": "2026-07-28",
+    "method": "Check",
+    "amount": 43800,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4419",
+        "amount": 43800
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2216",
+    "customer_id": "CUS-008",
+    "payment_date": "2026-06-13",
+    "method": "Wire",
+    "amount": 78400,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4362",
+        "amount": 78400
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2248",
+    "customer_id": "CUS-008",
+    "payment_date": "2026-07-19",
+    "method": "Wire",
+    "amount": 92300,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4400",
+        "amount": 92300
+      }
+    ]
+  },
+  {
+    "receipt_no": "RCP-2278",
+    "customer_id": "CUS-008",
+    "payment_date": "2026-08-11",
+    "method": "Wire",
+    "amount": 68600,
+    "applied_to": [
+      {
+        "invoice_no": "INV-4437",
+        "amount": 68600
+      }
+    ]
+  }
+]

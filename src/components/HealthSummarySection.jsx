@@ -95,7 +95,7 @@ export default function HealthSummarySection({ onOpenActionModal }) {
                 Inventory health
               </h3>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                ${(sys2.totalValue / 1000000).toFixed(2)}M of inventory value read from Brightpearl
+                ${(sys2.totalValue / 1000000).toFixed(2)}M of inventory value in the active workspace
               </p>
             </div>
             <button

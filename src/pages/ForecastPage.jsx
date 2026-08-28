@@ -32,7 +32,7 @@ export default function ForecastPage({ onOpenActionModal }) {
         </div>
 
         <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset">
-          Reading QuickBooks + Brightpearl
+          Manual workspace data
         </span>
       </div>
 
@@ -146,7 +146,7 @@ export default function ForecastPage({ onOpenActionModal }) {
               </span>
             </div>
             <p className="text-xs sm:text-sm leading-relaxed text-foreground">
-              Three domains collide in the same week: two large invoices slip, a stock reorder lands, and the Cascade payables cluster settles.
+              Open receivables and scheduled payables overlap inside the same forecast window. The projection uses payment-risk probabilities and current due dates.
             </p>
             <ul className="mt-4 divide-y divide-border text-xs">
               <li className="flex flex-wrap items-start gap-3 py-3">
@@ -156,10 +156,10 @@ export default function ForecastPage({ onOpenActionModal }) {
                   </span>
                 </span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block font-semibold text-foreground">Northgate Supply · INV-20418 + INV-20455</span>
-                  <span className="mt-0.5 block text-muted-foreground">$96,800 expected Aug 29, PayScore puts receipt at Sep 17 or later</span>
+                  <span className="block font-semibold text-foreground">Open receivables due in forecast window</span>
+                  <span className="mt-0.5 block text-muted-foreground">Risk-adjusted receipt timing from the active customer payment history</span>
                 </span>
-                <span className="shrink-0 font-semibold text-[#16a34a]">+$96,800</span>
+                <span className="shrink-0 font-semibold text-[#16a34a]">Risk-adjusted</span>
               </li>
               <li className="flex flex-wrap items-start gap-3 py-3">
                 <span className="w-20 shrink-0">
@@ -168,10 +168,10 @@ export default function ForecastPage({ onOpenActionModal }) {
                   </span>
                 </span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block font-semibold text-foreground">Meridian Pipe Works reorder</span>
-                  <span className="mt-0.5 block text-muted-foreground">$90,000 PVC and copper lot receipts Sep 2, payable on receipt</span>
+                  <span className="block font-semibold text-foreground">Inventory replenishment exposure</span>
+                  <span className="mt-0.5 block text-muted-foreground">Reorder recommendations are calculated from velocity, lead time and safety stock</span>
                 </span>
-                <span className="shrink-0 font-semibold text-[#ef4444]">−$90,000</span>
+                <span className="shrink-0 font-semibold text-[#ef4444]">Calculated</span>
               </li>
               <li className="flex flex-wrap items-start gap-3 py-3">
                 <span className="w-20 shrink-0">
@@ -180,10 +180,10 @@ export default function ForecastPage({ onOpenActionModal }) {
                   </span>
                 </span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block font-semibold text-foreground">Cascade Metals payables cluster</span>
-                  <span className="mt-0.5 block text-muted-foreground">Three invoices settle Sep 1–3, no discount window</span>
+                  <span className="block font-semibold text-foreground">Open payables due in forecast window</span>
+                  <span className="mt-0.5 block text-muted-foreground">Scheduled bill due dates are included in the cash projection</span>
                 </span>
-                <span className="shrink-0 font-semibold text-[#ef4444]">−$74,300</span>
+                <span className="shrink-0 font-semibold text-[#ef4444]">Calculated</span>
               </li>
             </ul>
           </div>

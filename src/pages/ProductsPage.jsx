@@ -22,7 +22,7 @@ export default function ProductsPage({ onOpenActionModal }) {
             Products & SKUs (${(sys2.totalValue / 1000000).toFixed(2)}M Total)
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            Inventory valuation, turnover velocity, and carrying cost optimization from Brightpearl (System 2).
+            Inventory valuation, turnover velocity, reorder and carrying-cost calculations from the active workspace data (System 2).
           </p>
         </div>
 

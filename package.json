@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "node node_modules/vite/bin/vite.js build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node scripts/reconcile.mjs",
+    "reconcile": "node scripts/reconcile.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

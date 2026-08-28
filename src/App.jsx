@@ -29,6 +29,7 @@ import MarginsPage from './pages/MarginsPage';
 import ReorderPage from './pages/ReorderPage';
 import ProductsPage from './pages/ProductsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
+import ManualDataPage from './pages/ManualDataPage';
 
 // Interactive Modals
 import AskAiModal from './components/AskAiModal';
@@ -37,9 +38,10 @@ import ActionDetailsModal from './components/ActionDetailsModal';
 import SettingsModal from './components/SettingsModal';
 
 function DashboardView({ onOpenActionModal, onOpenSettings }) {
-  const { user } = useData();
+  const { user, asOfDate } = useData();
   const nameStr = user?.name ? user.name.split(' ')[0] : 'Dana';
   const companyStr = user?.company || 'Harbourline Distribution';
+  const dateLabel = new Date(`${asOfDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
     <>
@@ -47,13 +49,13 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-            Saturday, August 15, 2026 · {companyStr}
+            {dateLabel} · {companyStr}
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Good morning, {nameStr}
           </h1>
           <p className="mt-2 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Three things moved overnight. Northgate's risk jumped, PVC margin slipped again, and your Sep 4 low point fell under your operating floor.
+            Your cash, receivables, payables and inventory are recalculated from the active workspace dataset.
           </p>
         </div>
 
@@ -65,7 +67,7 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
             ⚙️ Rules & Thresholds Config
           </button>
           <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
-            Reading QuickBooks + Brightpearl
+            Manual data mode
           </span>
         </div>
       </div>
@@ -164,6 +166,8 @@ function AppContent() {
         return <ProductsPage onOpenActionModal={setSelectedAction} />;
       case 'connections':
         return <ConnectionsPage onOpenActionModal={setSelectedAction} />;
+      case 'manual-data':
+        return <ManualDataPage />;
       case 'dashboard':
       default:
         return <DashboardView onOpenActionModal={setSelectedAction} onOpenSettings={() => setIsSettingsOpen(true)} />;

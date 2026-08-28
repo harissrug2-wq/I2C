@@ -1,0 +1,26 @@
+[
+  {
+    "account_id": "BANK-001",
+    "account_code": "1000",
+    "name": "Cash \u2014 Operating Account",
+    "type": "checking",
+    "balance": 892400,
+    "institution": "First National"
+  },
+  {
+    "account_id": "BANK-002",
+    "account_code": "1010",
+    "name": "Cash \u2014 Payroll Account",
+    "type": "checking",
+    "balance": 148200,
+    "institution": "First National"
+  },
+  {
+    "account_id": "BANK-003",
+    "account_code": "1020",
+    "name": "Cash \u2014 Money Market",
+    "type": "money_market",
+    "balance": 244300,
+    "institution": "Fidelity"
+  }
+]

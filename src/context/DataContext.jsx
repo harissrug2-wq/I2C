@@ -1,212 +1,54 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import {
-  DEFAULT_THRESHOLDS,
-  INITIAL_CUSTOMERS,
-  INITIAL_INVOICES,
-  INITIAL_PRODUCTS,
-  INITIAL_BILLS,
-  INITIAL_VENDORS,
-  INITIAL_CASH_BALANCE,
-  TRAILING_90D_REVENUE,
-  TRAILING_90D_COGS,
-  TRAILING_90D_PURCHASES,
-  computeSystem1,
-  computeSystem2,
-  computeSystem3,
-  computeSystem4,
-  computeSystem5,
-  evaluateRules
-} from '../utils/decisionSystems';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { cloneInitialWorkspaceData } from '../data/seedData';
+import { buildEngineInputs } from '../domain/dataAdapters';
+import { DEFAULT_THRESHOLDS, computeSystem1, computeSystem2, computeSystem3, computeSystem4, computeSystem5, evaluateRules } from '../utils/decisionSystems';
 
 const DataContext = createContext();
+const K_USER='i2cashflow_user_session';
+const K_THRESH='i2cashflow_thresholds';
+const K_WORKSPACE='i2cashflow_workspace_v2';
 
-const STORAGE_KEY_USER = 'i2cashflow_user_session';
-const STORAGE_KEY_THRESHOLDS = 'i2cashflow_thresholds';
-const STORAGE_KEY_CASH = 'i2cashflow_cash_balance';
+const defaultUser={email:'dana@harbourline.com',name:'Dana Mercer',company:'Harbourline Distribution',role:'Finance Director',isAuthenticated:false};
+const safeParse=(key,fallback)=>{ try { const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; } catch { return fallback; } };
 
-export function DataProvider({ children }) {
-  // Authentication & Workspace User State
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_USER);
-      return saved ? JSON.parse(saved) : {
-        email: 'dana@harbourline.com',
-        name: 'Dana Mercer',
-        company: 'Harbourline Distribution',
-        role: 'Finance Director',
-        isAuthenticated: false
-      };
-    } catch {
-      return {
-        email: 'dana@harbourline.com',
-        name: 'Dana Mercer',
-        company: 'Harbourline Distribution',
-        role: 'Finance Director',
-        isAuthenticated: false
-      };
-    }
-  });
+export function DataProvider({children}) {
+  const [user,setUser]=useState(()=>safeParse(K_USER,defaultUser));
+  const [thresholds,setThresholds]=useState(()=>safeParse(K_THRESH,DEFAULT_THRESHOLDS));
+  const [workspaceData,setWorkspaceData]=useState(()=>safeParse(K_WORKSPACE,cloneInitialWorkspaceData()));
 
-  // Raw Data State
-  const [cashBalance, setCashBalance] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CASH);
-      return saved ? Number(saved) : INITIAL_CASH_BALANCE;
-    } catch {
-      return INITIAL_CASH_BALANCE;
-    }
-  });
+  useEffect(()=>{ try{localStorage.setItem(K_USER,JSON.stringify(user));}catch{} },[user]);
+  useEffect(()=>{ try{localStorage.setItem(K_THRESH,JSON.stringify(thresholds));}catch{} },[thresholds]);
+  useEffect(()=>{ try{localStorage.setItem(K_WORKSPACE,JSON.stringify(workspaceData));}catch{} },[workspaceData]);
 
-  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
-  const [invoices, setInvoices] = useState(INITIAL_INVOICES);
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [bills, setBills] = useState(INITIAL_BILLS);
-  const [vendors, setVendors] = useState(INITIAL_VENDORS);
-  const [revenue90d, setRevenue90d] = useState(TRAILING_90D_REVENUE);
-  const [cogs90d, setCogs90d] = useState(TRAILING_90D_COGS);
-  const [purchases90d, setPurchases90d] = useState(TRAILING_90D_PURCHASES);
+  const engine=useMemo(()=>buildEngineInputs(workspaceData),[workspaceData]);
+  const computedData=useMemo(()=>{
+    const sys1=computeSystem1(engine.cashBalance,engine.invoices,engine.products,engine.bills,engine.metrics,thresholds);
+    const sys2=computeSystem2(engine.products,thresholds);
+    const sys3=computeSystem3(engine.cashBalance,engine.invoices,engine.bills,engine.metrics,engine.asOfDate,thresholds);
+    const sys4=computeSystem4(engine.customers,engine.invoices,engine.bills,engine.vendors,thresholds);
+    const sys5=computeSystem5(engine.products,engine.customers,engine.vendors,thresholds);
+    return {sys1,sys2,sys3,sys4,sys5,advisories:evaluateRules(sys1,sys2,sys3,sys4,sys5,thresholds)};
+  },[engine,thresholds]);
 
-  // Configurable Workspace Overrides / Thresholds State
-  const [thresholds, setThresholds] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_THRESHOLDS);
-      return saved ? JSON.parse(saved) : DEFAULT_THRESHOLDS;
-    } catch {
-      return DEFAULT_THRESHOLDS;
-    }
-  });
+  const updateThreshold=(key,value)=>setThresholds(p=>({...p,[key]:Number(value)}));
+  const resetThresholds=()=>setThresholds(DEFAULT_THRESHOLDS);
+  const loginUser=(emailInput,nameInput,companyInput)=>{const u={email:emailInput||defaultUser.email,name:nameInput||(emailInput?emailInput.split('@')[0]:defaultUser.name),company:companyInput||defaultUser.company,role:'Finance Director',isAuthenticated:true};setUser(u);return u;};
+  const logoutUser=()=>setUser(p=>({...p,isAuthenticated:false}));
 
-  // Save changes to localStorage for persistence
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [user]);
+  const updateDataset=(key,next)=>setWorkspaceData(prev=>({...prev,[key]:typeof next==='function'?next(prev[key]):next}));
+  const updateCompanyMetrics=(patch)=>setWorkspaceData(prev=>({...prev,companyMetrics:{...prev.companyMetrics,...patch}}));
+  const updateCashBalance=(value)=>setWorkspaceData(prev=>{const accounts=[...prev.bankAccounts]; if(!accounts.length) accounts.push({account_id:'BANK-001',account_code:'1000',name:'Operating Account',type:'checking',institution:'Manual',balance:Number(value)}); else {const total=accounts.reduce((s,a)=>s+Number(a.balance||0),0); const diff=Number(value)-total; accounts[0]={...accounts[0],balance:Number(accounts[0].balance||0)+diff};} return {...prev,bankAccounts:accounts};});
+  const resetWorkspace=()=>setWorkspaceData(cloneInitialWorkspaceData());
+  const replaceWorkspace=(data)=>setWorkspaceData(data);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_THRESHOLDS, JSON.stringify(thresholds));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [thresholds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_CASH, cashBalance.toString());
-    } catch (e) {
-      console.error(e);
-    }
-  }, [cashBalance]);
-
-  // Re-compute all 5 Decision Systems dynamically on any data or threshold change
-  const computedData = useMemo(() => {
-    const sys1 = computeSystem1(cashBalance, invoices, products, bills, revenue90d, cogs90d, purchases90d, thresholds);
-    const sys2 = computeSystem2(products, customers, thresholds);
-    const sys3 = computeSystem3(cashBalance, invoices, bills, thresholds);
-    const sys4 = computeSystem4(customers, invoices, bills, vendors, thresholds);
-    const sys5 = computeSystem5(products, customers, vendors, thresholds);
-    const advisories = evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds);
-
-    return {
-      sys1,
-      sys2,
-      sys3,
-      sys4,
-      sys5,
-      advisories
-    };
-  }, [cashBalance, customers, invoices, products, bills, vendors, revenue90d, cogs90d, purchases90d, thresholds]);
-
-  // Auth Functions
-  const loginUser = (emailInput, nameInput, companyInput) => {
-    const newUser = {
-      email: emailInput || 'dana@harbourline.com',
-      name: nameInput || (emailInput ? emailInput.split('@')[0] : 'Dana Mercer'),
-      company: companyInput || 'Harbourline Distribution',
-      role: 'Finance Director',
-      isAuthenticated: true
-    };
-    setUser(newUser);
-    return newUser;
-  };
-
-  const logoutUser = () => {
-    setUser(prev => ({ ...prev, isAuthenticated: false }));
-  };
-
-  // Helper functions to update state dynamically
-  const updateThreshold = (key, value) => {
-    setThresholds(prev => ({ ...prev, [key]: Number(value) }));
-  };
-
-  const resetThresholds = () => {
-    setThresholds(DEFAULT_THRESHOLDS);
-  };
-
-  const updateCustomerRisk = (customerId, newRiskScore) => {
-    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, riskScore: newRiskScore } : c));
-    setInvoices(prev => prev.map(inv => inv.customerId === customerId ? { ...inv, riskScore: newRiskScore } : inv));
-  };
-
-  const updateCashBalance = (newCash) => {
-    setCashBalance(Number(newCash));
-  };
-
-  const addCustomer = (newCustomer) => {
-    setCustomers(prev => [newCustomer, ...prev]);
-  };
-
-  const addInvoice = (newInvoice) => {
-    setInvoices(prev => [newInvoice, ...prev]);
-  };
-
-  const addProduct = (newProduct) => {
-    setProducts(prev => [newProduct, ...prev]);
-  };
-
-  const value = {
-    // User Auth
-    user,
-    loginUser,
-    logoutUser,
-    // Raw state
-    cashBalance,
-    customers,
-    invoices,
-    products,
-    bills,
-    vendors,
-    thresholds,
-    // Dynamic Decision System Outputs
-    ...computedData,
-    // Actions
-    updateThreshold,
-    resetThresholds,
-    updateCustomerRisk,
+  const value={
+    user,loginUser,logoutUser,thresholds,updateThreshold,resetThresholds,
+    workspaceData,updateDataset,updateCompanyMetrics,resetWorkspace,replaceWorkspace,
+    cashBalance:engine.cashBalance,customers:engine.customers,invoices:engine.invoices,products:engine.products,bills:engine.bills,vendors:engine.vendors,metrics:engine.metrics,asOfDate:engine.asOfDate,
     updateCashBalance,
-    addCustomer,
-    addInvoice,
-    addProduct,
-    setCustomers,
-    setInvoices,
-    setProducts,
-    setBills
+    ...computedData,
   };
-
-  return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
-  );
+  return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
-export function useData() {
-  const context = useContext(DataContext);
-  if (!context) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
-}
+export function useData(){const c=useContext(DataContext); if(!c) throw new Error('useData must be used within DataProvider'); return c;}

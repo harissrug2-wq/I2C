@@ -37,7 +37,7 @@ export default function ActionDetailsModal({ actionData, onClose }) {
               </div>
               <h4 className="text-base font-bold text-foreground">Action Successfully Scheduled & Executed</h4>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Rule staged in i2cashflow engine. Confirmation logged to audit trail and sync queued for QuickBooks + Brightpearl.
+                Action recorded in the local demo workspace. No external accounting system is connected.
               </p>
               <div className="pt-2">
                 <button
@@ -96,7 +96,7 @@ export default function ActionDetailsModal({ actionData, onClose }) {
               <div className="space-y-2 text-xs text-muted-foreground">
                 <div className="flex items-start gap-2">
                   <ShieldCheck className="size-4 text-[#0d9488] shrink-0 mt-0.5" />
-                  <span>Verified across QuickBooks open AR invoices and Brightpearl shipment logs.</span>
+                  <span>Verified against the active workspace data and decision-system calculations.</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="size-4 text-[#f59e0b] shrink-0 mt-0.5" />
