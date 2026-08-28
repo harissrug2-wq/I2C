@@ -14,7 +14,9 @@ import {
   Package, 
   PlugZap, 
   Lock,
-  X
+  X,
+  LogOut,
+  Home
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setActiveTab }) {
@@ -163,7 +165,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
 
         {/* Footer Profile */}
         {!isCollapsed && (
-          <div className="p-4 border-t border-[#1a3832] bg-[#0e221f]">
+          <div className="p-4 border-t border-[#1a3832] bg-[#0e221f] space-y-3">
             <div className="flex items-center gap-3 rounded-xl bg-[#173731] px-3 py-2.5">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#bef264] text-xs font-bold text-[#112723]">
                 DM
@@ -173,9 +175,21 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
                 <span className="block truncate text-[11px] text-[#86a7a0]">Harbourline Distribution</span>
               </div>
             </div>
-            <p className="mt-3 flex items-center gap-2 text-[11px] text-[#70958d]">
-              <Boxes className="size-3 shrink-0 text-[#86a7a0]" /> 3,908 SKUs · 8 customers
-            </p>
+
+            <div className="flex items-center justify-between text-[11px] text-[#86a7a0]">
+              <button 
+                onClick={() => setActiveTab('landing')}
+                className="flex items-center gap-1 hover:text-[#bef264] transition-colors cursor-pointer"
+              >
+                <Home className="size-3.5" /> Landing Page
+              </button>
+              <button 
+                onClick={() => setActiveTab('login')}
+                className="flex items-center gap-1 hover:text-[#ef4444] transition-colors cursor-pointer"
+              >
+                <LogOut className="size-3.5" /> Sign Out
+              </button>
+            </div>
           </div>
         )}
       </aside>

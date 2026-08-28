@@ -4,6 +4,11 @@ import Sidebar from './components/Sidebar';
 import DemoBanner from './components/DemoBanner';
 import { DataProvider } from './context/DataContext';
 
+// Standalone Public Pages
+import LandingPage from './pages/LandingPage';
+import PricingPage from './pages/PricingPage';
+import LoginPage from './pages/LoginPage';
+
 // Dashboard components
 import KpiMetricsGrid from './components/KpiMetricsGrid';
 import AlertBanner from './components/AlertBanner';
@@ -32,7 +37,7 @@ import ActionDetailsModal from './components/ActionDetailsModal';
 import SettingsModal from './components/SettingsModal';
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('landing');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
@@ -45,7 +50,7 @@ function AppContent() {
   // Sync activeTab with URL hash or pathname for navigation
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname.replace('/', '') || 'dashboard';
+      const path = window.location.pathname.replace('/', '') || 'landing';
       if (path) setActiveTab(path);
     };
     handlePopState();
@@ -55,7 +60,8 @@ function AppContent() {
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    window.history.pushState(null, '', `/${tabId === 'dashboard' ? '' : tabId}`);
+    const urlPath = tabId === 'landing' ? '/' : `/${tabId}`;
+    window.history.pushState(null, '', urlPath);
   };
 
   const toggleSidebar = () => {
@@ -65,6 +71,19 @@ function AppContent() {
       setIsSidebarCollapsed(!isSidebarCollapsed);
     }
   };
+
+  // Public standalone pages without dashboard sidebar/header wrapper
+  if (activeTab === 'landing') {
+    return <LandingPage onNavigate={handleTabChange} />;
+  }
+
+  if (activeTab === 'pricing') {
+    return <PricingPage onNavigate={handleTabChange} />;
+  }
+
+  if (activeTab === 'login') {
+    return <LoginPage onNavigate={handleTabChange} onLoginSuccess={() => handleTabChange('dashboard')} />;
+  }
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -177,9 +196,9 @@ function AppContent() {
             <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-4 px-2">
               <p>© 2026 i2cashflow inc. · Autonomous Inventory to Cashflow Intelligence</p>
               <div className="flex items-center gap-4 text-muted-foreground">
-                <a href="#" className="hover:text-foreground">Privacy Policy</a>
-                <a href="#" className="hover:text-foreground">Security Audit</a>
-                <a href="#" className="hover:text-foreground">Integrations</a>
+                <button onClick={() => handleTabChange('landing')} className="hover:text-foreground">Landing Page</button>
+                <button onClick={() => handleTabChange('pricing')} className="hover:text-foreground">Pricing</button>
+                <button onClick={() => handleTabChange('login')} className="hover:text-foreground">Sign Out</button>
               </div>
             </div>
           </footer>
