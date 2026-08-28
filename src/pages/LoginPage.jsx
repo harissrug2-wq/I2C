@@ -1,141 +1,185 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Lock, Mail, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
-  const [email, setEmail] = useState('dana.mercer@i2cashflow-distributor.com');
+  const [email, setEmail] = useState('dana@harbourline.example');
   const [password, setPassword] = useState('••••••••••••');
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (onLoginSuccess) onLoginSuccess();
-      else onNavigate('dashboard');
-    }, 600);
-  };
-
-  const handleDemoAccess = () => {
     if (onLoginSuccess) onLoginSuccess();
     else onNavigate('dashboard');
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/90 px-6 backdrop-blur">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('landing')}>
-          <div className="flex size-9 items-center justify-center rounded-xl bg-[#0d9488] text-white font-bold shadow-md">
-            i2
-          </div>
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            i2cashflow <span className="text-xs font-normal text-muted-foreground">inc.</span>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 text-xs font-semibold">
-          <button onClick={() => onNavigate('landing')} className="text-muted-foreground hover:text-foreground cursor-pointer">
-            Home
-          </button>
-          <button onClick={() => onNavigate('pricing')} className="text-muted-foreground hover:text-foreground cursor-pointer">
-            Pricing
-          </button>
-        </div>
-      </header>
-
-      {/* Main Login Card Area */}
-      <main className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 flex items-center justify-center opacity-25">
-          <div className="h-[450px] w-[450px] rounded-full bg-gradient-to-br from-[#0d9488] via-[#701a75] to-[#16a34a] blur-3xl" />
-        </div>
-
-        <div className="w-full max-w-md card-surface rounded-2xl p-8 border border-border/80 shadow-2xl space-y-6">
-          <div className="text-center space-y-2">
-            <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-[#0d9488]/10 text-[#0d9488] mb-2 shadow-inner">
-              <ShieldCheck className="size-6" />
+    <div className="min-h-screen bg-[#f8faf9] text-[#0f172a] flex flex-col font-sans">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-screen">
+        {/* Left Half: Demo Entry Form */}
+        <div className="lg:col-span-6 xl:col-span-5 flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-[#f8faf9]">
+          <div className="space-y-8 max-w-md mx-auto w-full">
+            {/* Logo */}
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('landing')}>
+              <span className="flex size-9 items-center justify-center rounded-xl bg-[#84cc16] text-[#052e16] font-black text-xl shadow-xs">
+                i2
+              </span>
+              <div className="flex flex-col">
+                <span className="leading-none text-[#0f172a] text-xl font-bold tracking-tight">cashflow</span>
+                <span className="text-[9px] font-semibold text-[#64748b] tracking-[0.18em] uppercase mt-0.5">INVENTORY TO CASHFLOW</span>
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Sign In to i2cashflow</h1>
-            <p className="text-xs text-muted-foreground">
-              Autonomous Inventory to Cashflow Intelligence Workspace
-            </p>
-          </div>
 
-          {/* Quick Demo Access Notice */}
-          <div className="rounded-xl bg-[#0d9488]/10 p-3 border border-[#0d9488]/20 flex items-start gap-2.5 text-xs text-foreground">
-            <Sparkles className="size-4 text-[#0d9488] shrink-0 mt-0.5" />
-            <p>Pre-populated with Dana Mercer's workspace credentials for instant evaluation.</p>
-          </div>
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h1 className="text-3xl font-extrabold text-[#0f172a] tracking-tight">Enter the demo workspace</h1>
+              <p className="text-xs text-[#64748b] leading-relaxed">
+                Everything inside is <strong className="text-[#0f172a]">demo data</strong> for a fictional distributor, Harbourline Distribution. <strong className="text-[#0f172a]">No authentication is required</strong> — just hit the button below and explore the full experience.
+              </p>
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-semibold mb-1 text-muted-foreground">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            {/* Light Lime Callout Box */}
+            <div className="rounded-2xl bg-[#ecfccb] p-4 border border-[#bef264] flex items-start gap-3 text-xs text-[#3f6212] leading-relaxed">
+              <Lock className="size-4 shrink-0 text-[#3f6212] mt-0.5" />
+              <span>
+                <strong>Read-only demo.</strong> No sign-up, no password, no connection to real books — nothing you click can change any record.
+              </span>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Work email</label>
                 <input
-                  type="email"
-                  required
+                  type="text"
+                  readOnly
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl bg-surface pl-9 pr-4 py-2.5 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
+                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#64748b] focus:outline-none shadow-2xs"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block font-semibold mb-1 text-muted-foreground">Password</label>
-              <div className="relative">
-                <Lock className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <div>
+                <label className="block text-xs font-semibold text-[#64748b] mb-1.5">Password</label>
                 <input
                   type="password"
-                  required
+                  readOnly
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl bg-surface pl-9 pr-4 py-2.5 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
+                  className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#64748b] focus:outline-none shadow-2xs"
                 />
               </div>
+
+              <p className="text-[11px] text-[#94a3b8]">Fields are illustrative only — the demo skips authentication entirely.</p>
+
+              <button
+                type="submit"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] py-3.5 px-6 text-xs font-bold text-[#052e16] shadow-md transition-all transform active:scale-95 cursor-pointer"
+              >
+                View Demo
+                <ArrowRight className="size-4" />
+              </button>
+            </form>
+
+            <div className="text-center pt-2">
+              <button
+                onClick={() => onNavigate('landing')}
+                className="text-xs font-semibold text-[#0f172a] hover:underline cursor-pointer"
+              >
+                Back to overview
+              </button>
             </div>
-
-            <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" defaultChecked className="rounded border-border" />
-                Remember this device
-              </label>
-              <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-foreground text-[#0d9488]">
-                Forgot password?
-              </a>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0d9488] hover:bg-[#0f766e] py-3 text-xs font-bold text-white shadow-lg transition-all cursor-pointer disabled:opacity-50"
-            >
-              {loading ? 'Authenticating Workspace…' : 'Sign In to Dashboard'}
-              <ArrowRight className="size-4" />
-            </button>
-          </form>
-
-          <div className="relative flex items-center justify-center border-t border-border/80 pt-4">
-            <span className="bg-card px-3 text-[10px] uppercase font-bold text-muted-foreground absolute -top-2.5">
-              OR
-            </span>
           </div>
 
-          {/* Quick Demo Shortcut */}
-          <button
-            type="button"
-            onClick={handleDemoAccess}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-[#0d9488]/40 bg-[#0d9488]/10 hover:bg-[#0d9488]/20 py-2.5 text-xs font-bold text-[#0d9488] transition-all cursor-pointer"
-          >
-            ⚡ One-Click Demo Access (Skip Login)
-          </button>
+          <div className="text-[11px] text-[#94a3b8] text-center pt-8">
+            © 2026 i2cashflow — Inventory to cashflow
+          </div>
         </div>
-      </main>
 
-      <footer className="py-4 text-center text-[11px] text-muted-foreground border-t border-border">
-        © 2026 i2cashflow inc. · QuickBooks + Brightpearl Interlock Security Verified
-      </footer>
+        {/* Right Half: Deep Forest Dark Green Section */}
+        <div className="lg:col-span-6 xl:col-span-7 bg-[#052e16] p-8 sm:p-12 lg:p-16 flex flex-col justify-between text-white border-l border-[#14532d]">
+          <div className="max-w-xl mx-auto space-y-8 w-full">
+            <div>
+              <p className="text-[10px] font-bold tracking-widest text-[#84cc16] uppercase">WHAT YOU WILL SEE INSIDE</p>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white mt-2 leading-tight">
+                Six lenses on the same question: where is my cash going?
+              </h2>
+            </div>
+
+            {/* 6 Dark Green Feature Cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Card 1 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <TrendingUp className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Cash flow forecast</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  90-day projection with a confidence band and your low point marked.
+                </p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <Users className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Customer risk scoring</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  Late-payment likelihood per account, with the driving factors explained.
+                </p>
+              </div>
+
+              {/* Card 3 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <DollarSign className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Payment priority</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  What to pay now to capture discounts, and what is safe to delay.
+                </p>
+              </div>
+
+              {/* Card 4 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <Package className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Margin & dead stock</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  Ranked margin leaks and the frozen cash sitting inside slow SKUs.
+                </p>
+              </div>
+
+              {/* Card 5 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <Bell className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Explained alerts</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  Risk, margin and overdue events with severity and reasoning.
+                </p>
+              </div>
+
+              {/* Card 6 */}
+              <div className="rounded-2xl bg-[#093322] p-5 border border-[#14532d] space-y-2">
+                <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
+                  <Lock className="size-4" />
+                </div>
+                <h3 className="font-bold text-xs text-white">Read-only always</h3>
+                <p className="text-[11px] text-[#86a7a0] leading-relaxed">
+                  We read QuickBooks and Brightpearl. We never create or edit records.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-[#86a7a0] pt-8 max-w-xl mx-auto w-full">
+            <Lock className="size-3.5 text-[#84cc16]" />
+            <span>Demo data · read-only · nothing is ever changed</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
