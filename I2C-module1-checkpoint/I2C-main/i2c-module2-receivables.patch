@@ -1,0 +1,1212 @@
+diff --git a/MODULE2_IMPLEMENTATION_STATUS.md b/MODULE2_IMPLEMENTATION_STATUS.md
+new file mode 100644
+index 0000000..6aef9ca
+--- /dev/null
++++ b/MODULE2_IMPLEMENTATION_STATUS.md
+@@ -0,0 +1,108 @@
++# i2cashflow — Module 2: Receivables
++
++## Development scope
++
++Module 2 is the AR-side module in the current delivery order:
++
++1. Manual Data Collection Integration (CSV) — Module 1
++2. **Receivables — this checkpoint**
++3. Payables
++4. Cash Forecasting
++5. Inventory
++6. Cross Domain Intelligence
++7. Dynamic Integrations
++
++This checkpoint deliberately keeps supplier/AP intelligence and inventory-AR chaining out of the Receivables UI. Those belong to Modules 3 and 6.
++
++## Source hierarchy and known conflicts
++
++1. `i2C - All Calculations for Development (2).docx` / Decision Systems Design — formal rules, ECL structure, collection/credit definitions.
++2. `i2C - Calculation Visuals (1).xlsx` — executable all-customer AR-aging and simplified PayScore reference.
++3. `i2c - Individual Customer (Test Data) (1).xlsx` — Northgate worked deep dive.
++4. `i2C - Test Data (Manual Calculations) (1).xlsx` — accounting reference where it agrees with the canonical $744,790 open-AR reconciliation.
++
++### PayScore conflict
++
++The full seven-component transformations are not supplied. The formal design delegates them to the separate `i2C Intelligence Specification`.
++
++The available workbooks also contain two Northgate examples:
++
++- Calculation Visuals simplified all-customer model: Northgate avg_days_late 45.75 → PayScore ~78.
++- Individual Customer seven-component worked example: Northgate weighted PayScore = 66.2.
++
++For an executable model that works for every supplied customer, Module 2 uses the explicit simplified band formula in Calculation Visuals:
++
++- avg < 0 → 15
++- avg 0–5 → 25
++- avg 6–15 → 45
++- avg 16–30 → 60
++- avg > 30 → 78
++
++The UI labels this PayScore model **provisional**. It must be replaced when the final Intelligence Specification is supplied.
++
++### ECL conflict
++
++The Calculation Visuals workbook contains older simplified PD rates (0.5%, 2%, 5%, 15%, 35%, 65%). The formal Decision Systems Design v1 specifies 1%, 3%, 8%, 22%, 45%, 68%, plus PayScore multipliers (<30 ×0.5, >80 ×1.5). Module 2 uses the formal Decision Systems Design v1 schedule and exposes that policy in the UI.
++
++## Implemented
++
++- Dedicated Receivables overview page.
++- AR aging across Current, 1–30, 31–60, 61–90, 91–120, and 120+.
++- Zero-drift aging reconciliation against total open AR.
++- Customer payment-history metrics from actual receipt allocations.
++- Source-backed simplified PayScore band model with confidence and explicit provisional status.
++- Per-customer open AR, past due, oldest age, credit utilization, ECL, and recommended credit limit.
++- Collection queue with explainable five-factor provisional priority score.
++- Per-invoice ECL using design-v1 PD/LGD policy.
++- Highest-ECL invoice and highest/lowest PayScore customer summaries.
++- Customer drill-down with invoice aging and ECL details.
++- Receivables-only Money at Risk page; cross-domain physical inventory recovery text removed from this module.
++- Credit Management advisories: CRD-001 through CRD-004 where source data supports them.
++- Bad-debt aging advisories: BAD-001 and BAD-002 where source data supports them.
++- Existing COL rules remain active through the shared rule engine.
++
++## Seed-data reference results
++
++- Total open AR: **$744,790**
++- Open invoices: **17**
++- Current: **$192,090**
++- 1–30: **$139,310**
++- 31–60: **$307,990**
++- 61–90: **$105,400**
++- 91–120: **$0**
++- 120+: **$0**
++- Aging reconciliation delta: **$0**
++- Highest simplified PayScore: **Northgate Supply Co. — 78**
++- Lowest simplified PayScore: **Brightline Electric — 15**
++- Design-v1 total ECL: **$45,291.77**
++- Highest single-invoice ECL: **INV-4438 — $13,875.40**
++
++## Automated gate
++
++Run:
++
++```bash
++npm run test:module2
++```
++
++The full gate remains:
++
++```bash
++npm test
++```
++
++Expected:
++
++- `✓ Reconciliation passed`
++- `✓ Phase 1 rule tests passed (35 configured rules)`
++- `✓ Phase 1 seed engine smoke passed`
++- `✓ Module 1 CSV import tests passed`
++- `✓ Module 2 receivables tests passed`
++
++## Not yet production-final
++
++- Final seven-component PayScore calibration remains unavailable.
++- Collection Priority Score component calibration remains provisional because the source gives the component names/buckets but not every tuned weight.
++- Durable audit/predictions persistence is still local-browser only.
++- Decimal.js migration remains a production acceptance item.
++- Rules needing promise/contact history, reserve-book balance, write-off history, external credit signals, collection-agency state, or historical AR/revenue growth stay dormant until those fields exist.
+diff --git a/package.json b/package.json
+index ac7ebc1..01e68ca 100644
+--- a/package.json
++++ b/package.json
+@@ -7,10 +7,11 @@
+     "dev": "vite --host",
+     "build": "vite build",
+     "preview": "vite preview",
+-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs",
++    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs",
+     "reconcile": "node scripts/reconcile.mjs",
+     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
+-    "test:module1": "node scripts/module1-csv-tests.mjs"
++    "test:module1": "node scripts/module1-csv-tests.mjs",
++    "test:module2": "node scripts/module2-receivables-tests.mjs"
+   },
+   "dependencies": {
+     "clsx": "^2.1.1",
+diff --git a/scripts/module2-receivables-tests.mjs b/scripts/module2-receivables-tests.mjs
+new file mode 100644
+index 0000000..78bd11d
+--- /dev/null
++++ b/scripts/module2-receivables-tests.mjs
+@@ -0,0 +1,96 @@
++import fs from 'node:fs';
++import assert from 'node:assert/strict';
++import { buildEngineInputs } from '../src/domain/dataAdapters.js';
++import { computeSystem4, DEFAULT_THRESHOLDS } from '../src/utils/decisionSystems.js';
++import { computeReceivablesModule, evaluateReceivablesRules, referencePayScore } from '../src/domain/receivables.js';
++
++const read=n=>JSON.parse(fs.readFileSync(new URL(`../src/data/seed/${n}`, import.meta.url),'utf8'));
++const workspace={
++  customers:read('customers.json'), suppliers:read('suppliers.json'), invoices:read('invoices.json'), invoiceLines:read('invoice_lines.json'),
++  bills:read('bills.json'), paymentsReceived:read('payments_received.json'), paymentsMade:read('payments_made.json'),
++  products:read('products.json'), bankAccounts:read('bank_accounts.json'), companyMetrics:read('company_metrics.json')
++};
++const e=buildEngineInputs(workspace);
++const r=computeReceivablesModule(e.customers,e.invoices,DEFAULT_THRESHOLDS);
++const s4=computeSystem4(e.customers,e.invoices,e.bills,e.vendors,DEFAULT_THRESHOLDS);
++
++// Calculation Visuals workbook — exact AR-aging reference.
++assert.equal(r.totalAR,744790);
++assert.equal(r.openInvoiceCount,17);
++assert.deepEqual(r.aging.buckets,{Current:192090,'1-30':139310,'31-60':307990,'61-90':105400,'91-120':0,'120+':0});
++assert.equal(r.aging.total,744790);
++assert.equal(r.aging.reconciliationDelta,0);
++assert.equal(r.aging.reconciled,true);
++
++// Calculation Visuals simplified PayScore band formula.
++assert.equal(referencePayScore(-1.7,3).score,15);
++assert.equal(referencePayScore(0.3,3).score,25);
++assert.equal(referencePayScore(6,3).score,45);
++assert.equal(referencePayScore(12.3,3).score,45);
++assert.equal(referencePayScore(18.3,3).score,60);
++assert.equal(referencePayScore(22,3).score,60);
++assert.equal(referencePayScore(45.8,4).score,78);
++const expectedScores={
++  'Northgate Supply Co.':78,
++  'Harbor Industrial Group':60,
++  'Vertex Plumbing Wholesale':45,
++  'Cedar Mill HVAC':45,
++  'Brightline Electric':15,
++  'Granite State Fasteners':25,
++  'Sunrise Pool Supply':60,
++  'Atlas Roofing Distributors':45,
++};
++for(const c of r.customers) assert.equal(c.payScore,expectedScores[c.name],`${c.name} PayScore`);
++assert.equal(r.highestRiskCustomer.name,'Northgate Supply Co.');
++assert.equal(r.lowestRiskCustomer.name,'Brightline Electric');
++
++// Formal Decision Systems Design v1 ECL schedule + 85% LGD.
++assert.equal(r.eclModel.status,'design-v1');
++assert.equal(r.totalECL,45291.77);
++assert.equal(r.highestECLInvoice.invoiceNo,'INV-4438');
++assert.equal(r.highestECLInvoice.ecl,13875.4);
++const northgate4412=r.invoices.find(i=>i.invoiceNo==='INV-4412');
++assert.equal(northgate4412.agingBucket,'61-90');
++assert.equal(northgate4412.adjustedPD,0.22);
++assert.equal(northgate4412.ecl,5834.4);
++
++// Collection queue remains explainable and deterministic.
++assert.equal(r.collectionQueue[0].name,'Northgate Supply Co.');
++assert.equal(r.collectionQueue[0].priorityTier,'P2');
++assert(r.collectionQueue.every(c=>Array.isArray(c.priorityFactors)&&c.priorityFactors.length===5));
++assert.equal(r.priorityModel.status,'provisional');
++assert.equal(r.payScoreModel.status,'provisional');
++
++// Compatibility shape used by the existing app remains intact.
++assert.equal(s4.totalAR,744790);
++assert.equal(s4.collectionQueue.length,8);
++assert.equal(s4.creditManagement.length,8);
++assert.equal(s4.eclInvoices.length,17);
++
++// Module 2 credit/bad-debt rules.
++const sample={
++  invoiceMedian:10000,
++  customers:[
++    {id:'A',name:'Breach Co',creditUtilization:110,balance:110000,creditLimit:100000,payScore:70,payScoreConfidence:70,avgDaysLate:20},
++    {id:'B',name:'Near Co',creditUtilization:85,balance:85000,creditLimit:100000,payScore:50,payScoreConfidence:70,avgDaysLate:10},
++    {id:'C',name:'Risk Co',creditUtilization:70,balance:70000,creditLimit:100000,payScore:78,payScoreConfidence:70,avgDaysLate:40},
++    {id:'D',name:'No Limit',creditUtilization:null,balance:25000,creditLimit:0,payScore:45,payScoreConfidence:60,avgDaysLate:8},
++  ],
++  invoices:[
++    {invoiceNo:'INV-X1',daysOverdue:100,payScore:50,ecl:500,balanceDue:5000,adjustedPD:.45},
++    {invoiceNo:'INV-X2',daysOverdue:130,payScore:78,ecl:900,balanceDue:5000,adjustedPD:.68},
++  ],
++};
++const ids=evaluateReceivablesRules(sample).map(a=>a.id);
++for(const id of ['CRD-001','CRD-002','CRD-003','CRD-004','BAD-001','BAD-002']) assert(ids.includes(id),`${id} did not fire`);
++
++console.log('✓ Module 2 receivables tests passed');
++console.log(JSON.stringify({
++  totalAR:r.totalAR,
++  aging:r.aging.buckets,
++  totalECL:r.totalECL,
++  highestECL:[r.highestECLInvoice.invoiceNo,r.highestECLInvoice.ecl],
++  highestPayScore:[r.highestRiskCustomer.name,r.highestRiskCustomer.payScore],
++  lowestPayScore:[r.lowestRiskCustomer.name,r.lowestRiskCustomer.payScore],
++  queue:r.collectionQueue.map(c=>[c.name,c.payScore,c.priorityTier,c.priorityScore]),
++},null,2));
+diff --git a/src/App.jsx b/src/App.jsx
+index 2f8a26c..cc4c62b 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -20,6 +20,7 @@ import HealthSummarySection from './components/HealthSummarySection';
+ import ForecastPage from './pages/ForecastPage';
+ import AlertsPage from './pages/AlertsPage';
+ import InsightsPage from './pages/InsightsPage';
++import ReceivablesPage from './pages/ReceivablesPage';
+ import AtRiskPage from './pages/AtRiskPage';
+ import CollectionsPage from './pages/CollectionsPage';
+ import CustomersPage from './pages/CustomersPage';
+@@ -148,6 +149,8 @@ function AppContent() {
+         return <AlertsPage onOpenActionModal={setSelectedAction} />;
+       case 'insights':
+         return <InsightsPage onOpenActionModal={setSelectedAction} />;
++      case 'receivables':
++        return <ReceivablesPage />;
+       case 'at-risk':
+         return <AtRiskPage onOpenActionModal={setSelectedAction} />;
+       case 'collections':
+diff --git a/src/components/HealthSummarySection.jsx b/src/components/HealthSummarySection.jsx
+index df402c9..018879c 100644
+--- a/src/components/HealthSummarySection.jsx
++++ b/src/components/HealthSummarySection.jsx
+@@ -5,8 +5,8 @@ import { useData } from '../context/DataContext';
+ export default function HealthSummarySection({ onOpenActionModal }) {
+   const { sys2, sys4, customers } = useData();
+ 
+-  const criticalAR = sys4.collectionQueue.filter(c => c.riskScore > 60).reduce((s, c) => s + c.balance, 0);
+-  const elevatedAR = sys4.collectionQueue.filter(c => c.riskScore > 30 && c.riskScore <= 60).reduce((s, c) => s + c.balance, 0);
++  const criticalAR = sys4.collectionQueue.filter(c => c.payScoreRiskTier === 'CRITICAL').reduce((s, c) => s + c.balance, 0);
++  const elevatedAR = sys4.collectionQueue.filter(c => ['HIGH','MEDIUM'].includes(c.payScoreRiskTier)).reduce((s, c) => s + c.balance, 0);
+   const healthyAR = Math.max(0, sys4.totalAR - criticalAR - elevatedAR);
+ 
+   const critPercent = Math.round((criticalAR / (sys4.totalAR || 1)) * 100);
+@@ -81,7 +81,7 @@ export default function HealthSummarySection({ onOpenActionModal }) {
+         </div>
+ 
+         <p className="mt-4 rounded-lg bg-[#ef4444]/10 p-3 text-xs text-[#ef4444] font-medium ring-1 ring-[#ef4444]/20">
+-          {critPercent}% of your receivables sit in the Critical risk tier. Two accounts drive all of it.
++          {critPercent}% of receivables sit in the Critical PayScore reference tier. PayScore remains provisional until the full component specification is available.
+         </p>
+       </article>
+ 
+diff --git a/src/components/KpiMetricsGrid.jsx b/src/components/KpiMetricsGrid.jsx
+index 572ac65..f8048cb 100644
+--- a/src/components/KpiMetricsGrid.jsx
++++ b/src/components/KpiMetricsGrid.jsx
+@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
+ 
+ export default function KpiMetricsGrid({ onOpenActionModal }) {
+   const { sys1, sys4, cashBalance, customers, metrics } = useData();
+-  const atRiskAccounts=sys4.collectionQueue.filter(c=>c.riskScore>60||c.pastDue>0).length;
++  const atRiskAccounts=sys4.collectionQueue.filter(c=>c.payScore>=60||c.maxDaysOverdue>60).length;
+   const grossMargin=metrics.revenue30d>0?((metrics.revenue30d-metrics.cogs30d)/metrics.revenue30d)*100:0;
+   const cards=[
+     {label:'Cash position',value:`$${cashBalance.toLocaleString()}`,sub:`Quick ratio ${sys1.quickRatio}`,icon:WalletCards},
+diff --git a/src/components/Sidebar.jsx b/src/components/Sidebar.jsx
+index fb0b59e..9a34380 100644
+--- a/src/components/Sidebar.jsx
++++ b/src/components/Sidebar.jsx
+@@ -6,6 +6,7 @@ import {
+   Bell, 
+   Network, 
+   ShieldAlert, 
++  WalletCards,
+   ListOrdered, 
+   Users, 
+   CircleDollarSign, 
+@@ -40,6 +41,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
+     {
+       label: 'RECEIVABLES',
+       items: [
++        { id: 'receivables', label: 'Receivables overview', icon: WalletCards },
+         { id: 'at-risk', label: 'Money at risk', icon: ShieldAlert },
+         { id: 'collections', label: 'Collections priority', icon: ListOrdered },
+         { id: 'customers', label: 'Customers', icon: Users },
+diff --git a/src/context/DataContext.jsx b/src/context/DataContext.jsx
+index b76db62..d637c3e 100644
+--- a/src/context/DataContext.jsx
++++ b/src/context/DataContext.jsx
+@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
+ import { cloneInitialWorkspaceData } from '../data/seedData';
+ import { buildEngineInputs } from '../domain/dataAdapters';
+ import { DEFAULT_THRESHOLDS, computeSystem1, computeSystem2, computeSystem3, computeSystem4, computeSystem5, evaluateRules } from '../utils/decisionSystems';
++import { evaluateReceivablesRules } from '../domain/receivables';
+ 
+ const DataContext = createContext();
+ const K_USER='i2cashflow_user_session';
+@@ -29,7 +30,9 @@ export function DataProvider({children}) {
+     const cashInvoices=engine.invoices.map(i=>({...i,riskScore:payScoreByCustomer.get(i.customerId)??i.riskScore}));
+     const sys3=computeSystem3(engine.cashBalance,cashInvoices,engine.bills,engine.metrics,engine.asOfDate,thresholds);
+     const sys5=computeSystem5(engine.products,engine.customers,engine.vendors,thresholds);
+-    return {sys1,sys2,sys3,sys4,sys5,advisories:evaluateRules(sys1,sys2,sys3,sys4,sys5,thresholds)};
++    const phase1Advisories=evaluateRules(sys1,sys2,sys3,sys4,sys5,thresholds);
++    const receivablesAdvisories=evaluateReceivablesRules(sys4.receivables || sys4);
++    return {sys1,sys2,sys3,sys4,sys5,advisories:[...phase1Advisories,...receivablesAdvisories]};
+   },[engine,thresholds]);
+ 
+   const updateThreshold=(key,value)=>setThresholds(p=>({...p,[key]:Number(value)}));
+diff --git a/src/domain/receivables.js b/src/domain/receivables.js
+new file mode 100644
+index 0000000..e55ba13
+--- /dev/null
++++ b/src/domain/receivables.js
+@@ -0,0 +1,347 @@
++/**
++ * Module 2 — Receivables engine.
++ *
++ * Source hierarchy:
++ * 1) DECISION SYSTEMS DESIGN / All Calculations for Development for rule/formula structure.
++ * 2) Calculation Visuals workbook for executable seed-data reference outputs.
++ *
++ * PayScore caveat:
++ * The full seven-component transformations are explicitly delegated to the unavailable
++ * i2C Intelligence Specification. For the current manual-data build we therefore use
++ * the simplified avg-days-late band mapping supplied in Calculation Visuals and expose
++ * the model as provisional.
++ */
++
++const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n || 0)));
++const round1 = n => Math.round(Number(n || 0) * 10) / 10;
++const round2 = n => Math.round(Number(n || 0) * 100) / 100;
++const money = n => Math.round(Number(n || 0));
++
++export const RECEIVABLES_MODEL_VERSION = 'module2-receivables-2026-08';
++
++export const RECEIVABLES_CONFIG = Object.freeze({
++  payScore: {
++    model: 'avg-days-late-reference',
++    provisional: true,
++    bands: [
++      { maxExclusive: 0, score: 15, label: 'Excellent', riskTier: 'LOW' },
++      { maxInclusive: 5, score: 25, label: 'Good', riskTier: 'LOW' },
++      { maxInclusive: 15, score: 45, label: 'Fair', riskTier: 'MEDIUM' },
++      { maxInclusive: 30, score: 60, label: 'Concerning', riskTier: 'HIGH' },
++      { score: 78, label: 'Critical', riskTier: 'CRITICAL' },
++    ],
++  },
++  collectionPriority: {
++    p1Min: 85,
++    p2Min: 65,
++    p3Min: 40,
++  },
++  ecl: {
++    // Formal Decision Systems Design v1 schedule.
++    pd: {
++      Current: 0.01,
++      '1-30': 0.03,
++      '31-60': 0.08,
++      '61-90': 0.22,
++      '91-120': 0.45,
++      '120+': 0.68,
++    },
++    lowRiskPayScoreMax: 30,
++    lowRiskMultiplier: 0.5,
++    highRiskPayScoreMin: 80,
++    highRiskMultiplier: 1.5,
++    lgd: 0.85,
++  },
++});
++
++export const AR_AGING_BUCKETS = Object.freeze(['Current', '1-30', '31-60', '61-90', '91-120', '120+']);
++
++export function receivablesAgingBucket(daysOverdue) {
++  const days = Math.max(0, Number(daysOverdue || 0));
++  if (days <= 0) return 'Current';
++  if (days <= 30) return '1-30';
++  if (days <= 60) return '31-60';
++  if (days <= 90) return '61-90';
++  if (days <= 120) return '91-120';
++  return '120+';
++}
++
++export function referencePayScore(avgDaysLate, historyCount = 0) {
++  const avg = Number(avgDaysLate || 0);
++  const count = Number(historyCount || 0);
++  if (count <= 0) {
++    return {
++      score: 25,
++      label: 'Cold start',
++      riskTier: 'LOW',
++      provisional: true,
++      confidence: 25,
++      basis: 'No payment history — neutral cold-start score',
++    };
++  }
++
++  let band;
++  if (avg < 0) band = RECEIVABLES_CONFIG.payScore.bands[0];
++  else if (avg <= 5) band = RECEIVABLES_CONFIG.payScore.bands[1];
++  else if (avg <= 15) band = RECEIVABLES_CONFIG.payScore.bands[2];
++  else if (avg <= 30) band = RECEIVABLES_CONFIG.payScore.bands[3];
++  else band = RECEIVABLES_CONFIG.payScore.bands[4];
++
++  // Confidence grows with payment observations but is capped because this is not
++  // the final seven-component Intelligence Specification model.
++  const confidence = clamp(45 + count * 8, 45, 77);
++  return {
++    score: band.score,
++    label: band.label,
++    riskTier: band.riskTier,
++    provisional: true,
++    confidence,
++    basis: `Average payment lateness ${round1(avg)} days across ${count} payment${count === 1 ? '' : 's'}`,
++  };
++}
++
++function median(values) {
++  const nums = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
++  if (!nums.length) return 0;
++  const mid = Math.floor(nums.length / 2);
++  return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
++}
++
++function emptyBuckets() {
++  return Object.fromEntries(AR_AGING_BUCKETS.map(bucket => [bucket, 0]));
++}
++
++function paymentHistoryRisk(avgDaysLate) {
++  return clamp((Math.max(0, Number(avgDaysLate || 0)) / 30) * 15, 0, 15);
++}
++
++function priorityForCustomer(customer, invoiceMedian) {
++  // The design specifies the component names and bucket thresholds, but not all
++  // calibrated component weights. These transparent normalisations are therefore
++  // explicitly provisional and used only to rank the queue, not to redefine COL rules.
++  const ageRisk = clamp((Number(customer.maxDaysOverdue || 0) / 90) * 30, 0, 30);
++  const amountRisk = invoiceMedian > 0 ? clamp((Number(customer.balance || 0) / invoiceMedian) * 7.5, 0, 15) : 0;
++  const customerRisk = clamp(Number(customer.payScore || 0) * 0.35, 0, 35);
++  const historyRisk = paymentHistoryRisk(customer.avgDaysLate);
++  const disputeRisk = customer.hasDispute ? 5 : 0;
++  const priorityScore = Math.round(clamp(ageRisk + amountRisk + customerRisk + historyRisk + disputeRisk, 0, 100));
++
++  const p = RECEIVABLES_CONFIG.collectionPriority;
++  let priorityTier = 'P4';
++  let action = 'Automated reminder';
++  if (priorityScore > p.p1Min) {
++    priorityTier = 'P1';
++    action = 'Owner-level call today';
++  } else if (priorityScore > p.p2Min) {
++    priorityTier = 'P2';
++    action = 'Formal outreach within 72 hours';
++  } else if (priorityScore > p.p3Min) {
++    priorityTier = 'P3';
++    action = 'Standard reminder cycle';
++  }
++
++  return {
++    priorityScore,
++    priorityTier,
++    action,
++    priorityFactors: [
++      { name: 'Age risk', value: round1(ageRisk) },
++      { name: 'Amount risk', value: round1(amountRisk) },
++      { name: 'PayScore risk', value: round1(customerRisk) },
++      { name: 'Payment history risk', value: round1(historyRisk) },
++      { name: 'Dispute risk', value: round1(disputeRisk) },
++    ],
++    priorityModelProvisional: true,
++  };
++}
++
++function eclForInvoice(invoice, payScore, lgd) {
++  const bucket = receivablesAgingBucket(invoice.daysOverdue);
++  const basePD = Number(RECEIVABLES_CONFIG.ecl.pd[bucket] || 0);
++  let multiplier = 1;
++  if (Number(payScore) < RECEIVABLES_CONFIG.ecl.lowRiskPayScoreMax) multiplier = RECEIVABLES_CONFIG.ecl.lowRiskMultiplier;
++  else if (Number(payScore) > RECEIVABLES_CONFIG.ecl.highRiskPayScoreMin) multiplier = RECEIVABLES_CONFIG.ecl.highRiskMultiplier;
++  const adjustedPD = clamp(basePD * multiplier, 0, 1);
++  const ecl = Number(invoice.balanceDue || 0) * adjustedPD * lgd;
++  return {
++    ...invoice,
++    agingBucket: bucket,
++    basePD,
++    payScoreMultiplier: multiplier,
++    adjustedPD,
++    lgd,
++    ecl: round2(ecl),
++  };
++}
++
++export function computeReceivablesModule(customers, invoices, thresholds = {}) {
++  const openInvoices = invoices.filter(inv => Number(inv.balanceDue || 0) > 0);
++  const totalARExact = openInvoices.reduce((sum, inv) => sum + Number(inv.balanceDue || 0), 0);
++  const invoiceMedian = median(openInvoices.map(inv => Number(inv.balanceDue || 0)));
++  const lgd = Number(thresholds.lgd_default ?? RECEIVABLES_CONFIG.ecl.lgd);
++
++  const customerScoreMap = new Map();
++  const customerRows = customers.map(customer => {
++    const pay = customer.riskScoreOverride != null
++      ? {
++          score: clamp(customer.riskScoreOverride, 0, 100),
++          label: 'Workspace override',
++          riskTier: customer.riskScoreOverride > 80 ? 'CRITICAL' : customer.riskScoreOverride >= 60 ? 'HIGH' : customer.riskScoreOverride >= 30 ? 'MEDIUM' : 'LOW',
++          provisional: false,
++          confidence: 95,
++          basis: 'Workspace risk score override',
++        }
++      : referencePayScore(customer.avgDaysLate, customer.paymentHistoryCount);
++
++    const open = openInvoices.filter(inv => inv.customerId === customer.id);
++    const buckets = emptyBuckets();
++    open.forEach(inv => { buckets[receivablesAgingBucket(inv.daysOverdue)] += Number(inv.balanceDue || 0); });
++    const utilization = Number(customer.creditLimit || 0) > 0 ? Number(customer.balance || 0) / Number(customer.creditLimit) : null;
++    const row = {
++      ...customer,
++      payScore: pay.score,
++      riskScore: pay.score,
++      payScoreLabel: pay.label,
++      payScoreRiskTier: pay.riskTier,
++      payScoreConfidence: pay.confidence,
++      payScoreProvisional: pay.provisional,
++      payScoreBasis: pay.basis,
++      agingBuckets: Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, money(v)])),
++      openInvoiceCount: open.length,
++      creditUtilization: utilization == null ? null : round1(utilization * 100),
++    };
++    customerScoreMap.set(customer.id, row);
++    return row;
++  });
++
++  const eclInvoices = openInvoices.map(inv => {
++    const customer = customerScoreMap.get(inv.customerId);
++    return eclForInvoice(inv, customer?.payScore ?? 25, lgd);
++  });
++
++  const eclByCustomer = new Map();
++  eclInvoices.forEach(inv => eclByCustomer.set(inv.customerId, (eclByCustomer.get(inv.customerId) || 0) + inv.ecl));
++
++  const customersWithECL = customerRows.map(customer => {
++    const creditLimit = Number(customer.creditLimit || 0);
++    const avgMonthly = Number(customer.avgMonthly || 0);
++    const maxMonthly = Number(customer.maxMonthly || 0);
++    const riskAdj = customer.payScore < 30 ? 1.2 : customer.payScore > 80 ? 0.4 : customer.payScore > 60 ? 0.7 : 1;
++    const avgBased = avgMonthly > 0 ? avgMonthly * 2.5 : creditLimit;
++    const maxBased = maxMonthly > 0 ? maxMonthly * 1.3 : creditLimit;
++    const baseLimit = Math.min(avgBased || creditLimit, maxBased || creditLimit);
++    const recommendedLimit = Math.max(0, Math.round((baseLimit * riskAdj) / 1000) * 1000);
++    const priority = priorityForCustomer(customer, invoiceMedian);
++    return {
++      ...customer,
++      ecl: round2(eclByCustomer.get(customer.id) || 0),
++      recommendedLimit,
++      isCreditBreached: customer.creditUtilization != null && customer.creditUtilization > 100,
++      ...priority,
++    };
++  });
++
++  const customerMap = new Map(customersWithECL.map(c => [c.id, c]));
++  const detailedInvoices = eclInvoices.map(inv => ({
++    ...inv,
++    payScore: customerMap.get(inv.customerId)?.payScore ?? 25,
++    payScoreRiskTier: customerMap.get(inv.customerId)?.payScoreRiskTier ?? 'LOW',
++  }));
++
++  const totals = emptyBuckets();
++  detailedInvoices.forEach(inv => { totals[inv.agingBucket] += Number(inv.balanceDue || 0); });
++  const agingTotal = Object.values(totals).reduce((sum, n) => sum + n, 0);
++  const totalECL = detailedInvoices.reduce((sum, inv) => sum + Number(inv.ecl || 0), 0);
++
++  const collectionQueue = [...customersWithECL]
++    .filter(c => Number(c.balance || 0) > 0)
++    .sort((a, b) => b.priorityScore - a.priorityScore || b.pastDue - a.pastDue || b.balance - a.balance);
++
++  const highestECLInvoice = [...detailedInvoices].sort((a, b) => b.ecl - a.ecl)[0] || null;
++  const highestRiskCustomer = [...customersWithECL].sort((a, b) => b.payScore - a.payScore || b.avgDaysLate - a.avgDaysLate)[0] || null;
++  const lowestRiskCustomer = [...customersWithECL].sort((a, b) => a.payScore - b.payScore || a.avgDaysLate - b.avgDaysLate)[0] || null;
++
++  return {
++    version: RECEIVABLES_MODEL_VERSION,
++    totalAR: money(totalARExact),
++    openInvoiceCount: openInvoices.length,
++    invoiceMedian: money(invoiceMedian),
++    aging: {
++      buckets: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, money(v)])),
++      total: money(agingTotal),
++      reconciliationDelta: round2(totalARExact - agingTotal),
++      reconciled: Math.abs(totalARExact - agingTotal) < 0.01,
++    },
++    customers: customersWithECL,
++    invoices: detailedInvoices,
++    collectionQueue,
++    totalECL: round2(totalECL),
++    collectibleAR: round2(Math.max(0, totalARExact - totalECL)),
++    moneyAtRisk: money(detailedInvoices.filter(i => i.payScore >= 60 || i.daysOverdue > 60).reduce((s, i) => s + Number(i.balanceDue || 0), 0)),
++    highestECLInvoice,
++    highestRiskCustomer,
++    lowestRiskCustomer,
++    payScoreModel: {
++      status: customersWithECL.some(c => c.payScoreProvisional) ? 'provisional' : 'final',
++      method: 'Simplified avg-days-late bands from Calculation Visuals workbook',
++      missingSpecification: 'i2C Intelligence Specification',
++      sourceConflict: 'The Northgate deep-dive workbook also demonstrates a 7-component score of 66.2; the executable all-customer reference workbook uses 78 from avg-days-late bands.',
++    },
++    priorityModel: {
++      status: 'provisional',
++      reason: 'Collection Priority Score component names and buckets are specified, but calibrated component weights are not supplied.',
++    },
++    eclModel: {
++      status: 'design-v1',
++      pdSchedule: { ...RECEIVABLES_CONFIG.ecl.pd },
++      lgd,
++      payScoreMultipliers: `<${RECEIVABLES_CONFIG.ecl.lowRiskPayScoreMax}: ×${RECEIVABLES_CONFIG.ecl.lowRiskMultiplier}; >${RECEIVABLES_CONFIG.ecl.highRiskPayScoreMin}: ×${RECEIVABLES_CONFIG.ecl.highRiskMultiplier}`,
++    },
++  };
++}
++
++function receivableAdvisory({ id, entityId = null, priority, finding, reason, risk, recommendedAction, contributors = [], confidence = 65 }) {
++  return {
++    id,
++    entityId,
++    system: 'Receivables',
++    domain: 'Receivables',
++    priority,
++    finding,
++    reason,
++    risk,
++    recommendedAction,
++    contributors: contributors.filter(Boolean).slice(0, 5),
++    confidence: clamp(confidence, 25, 95),
++  };
++}
++
++export function evaluateReceivablesRules(receivables) {
++  const out = [];
++  const invoiceMedian = Number(receivables?.invoiceMedian || 0);
++  for (const c of receivables?.customers || []) {
++    const util = Number(c.creditUtilization || 0);
++    const confidence = Number(c.payScoreConfidence || 55);
++    if (util > 100) {
++      out.push(receivableAdvisory({ id:'CRD-001', entityId:c.id, priority:'CRITICAL', finding:`${c.name} is above its credit limit at ${round1(util)}% utilization.`, reason:`Open AR is ${money(c.balance).toLocaleString()} against a ${money(c.creditLimit).toLocaleString()} limit.`, risk:'Additional orders increase unsecured exposure beyond the approved policy.', recommendedAction:'Halt new credit orders and review the limit within 24 hours.', contributors:[`Utilization ${round1(util)}%`,`Open AR $${money(c.balance).toLocaleString()}`,`Limit $${money(c.creditLimit).toLocaleString()}`,`PayScore ${c.payScore}`], confidence }));
++    } else if (util >= 80) {
++      out.push(receivableAdvisory({ id:'CRD-002', entityId:c.id, priority:'HIGH', finding:`${c.name} is approaching its credit limit at ${round1(util)}% utilization.`, reason:`Open AR is ${money(c.balance).toLocaleString()} against a ${money(c.creditLimit).toLocaleString()} limit.`, risk:'The next material order could push the customer into a credit-policy breach.', recommendedAction:'Warn the owner before approving the next material credit order.', contributors:[`Utilization ${round1(util)}%`,`Open AR $${money(c.balance).toLocaleString()}`,`PayScore ${c.payScore}`], confidence }));
++    } else if (util >= 60 && c.payScore > 60) {
++      out.push(receivableAdvisory({ id:'CRD-003', entityId:c.id, priority:'MEDIUM', finding:`${c.name} combines ${round1(util)}% credit utilization with PayScore ${c.payScore}.`, reason:'Material credit usage overlaps with elevated payment risk.', risk:'Exposure can become difficult to unwind if aging continues to deteriorate.', recommendedAction:'Review the credit limit downward before extending more terms.', contributors:[`Utilization ${round1(util)}%`,`PayScore ${c.payScore}`,`Avg late ${c.avgDaysLate} days`,`Open AR $${money(c.balance).toLocaleString()}`], confidence }));
++    }
++    if (Number(c.creditLimit || 0) <= 0 && Number(c.balance || 0) > invoiceMedian * 2 && invoiceMedian > 0) {
++      out.push(receivableAdvisory({ id:'CRD-004', entityId:c.id, priority:'MEDIUM', finding:`${c.name} has material AR exposure but no credit limit.`, reason:`Open AR of $${money(c.balance).toLocaleString()} exceeds 2× the workspace median open invoice.`, risk:'There is no explicit credit-policy ceiling on further exposure.', recommendedAction:'Set a formal credit limit before the next material order.', contributors:[`Open AR $${money(c.balance).toLocaleString()}`,`Median invoice $${money(invoiceMedian).toLocaleString()}`], confidence }));
++    }
++  }
++
++  for (const inv of receivables?.invoices || []) {
++    if (Number(inv.daysOverdue || 0) > 120 && Number(inv.payScore || 0) > 70) {
++      out.push(receivableAdvisory({ id:'BAD-002', entityId:inv.invoiceNo, priority:'CRITICAL', finding:`${inv.invoiceNo} is over 120 days overdue with PayScore ${inv.payScore}.`, reason:`The calculated ECL is $${money(inv.ecl).toLocaleString()} on a $${money(inv.balanceDue).toLocaleString()} balance.`, risk:'The balance has a high probability of loss and should not remain under-provisioned.', recommendedAction:'Review for full reserve minus expected recovery.', contributors:[`${inv.daysOverdue} days overdue`,`PayScore ${inv.payScore}`,`ECL $${money(inv.ecl).toLocaleString()}`,`Adjusted PD ${round1(inv.adjustedPD*100)}%`], confidence:70 }));
++    } else if (Number(inv.daysOverdue || 0) > 90) {
++      out.push(receivableAdvisory({ id:'BAD-001', entityId:inv.invoiceNo, priority:'HIGH', finding:`${inv.invoiceNo} is more than 90 days overdue.`, reason:`The calculated ECL is $${money(inv.ecl).toLocaleString()} on a $${money(inv.balanceDue).toLocaleString()} balance.`, risk:'Aging materially increases expected credit loss and reserve requirements.', recommendedAction:'Flag the invoice for ECL review and collection escalation.', contributors:[`${inv.daysOverdue} days overdue`,`ECL $${money(inv.ecl).toLocaleString()}`,`Adjusted PD ${round1(inv.adjustedPD*100)}%`], confidence:70 }));
++    }
++  }
++
++  const rank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
++  return out.sort((a,b)=>(rank[b.priority]||0)-(rank[a.priority]||0)||b.confidence-a.confidence);
++}
+diff --git a/src/pages/AtRiskPage.jsx b/src/pages/AtRiskPage.jsx
+index a0b52c6..1ef9aaa 100644
+--- a/src/pages/AtRiskPage.jsx
++++ b/src/pages/AtRiskPage.jsx
+@@ -4,63 +4,34 @@ import { useData } from '../context/DataContext';
+ 
+ export default function AtRiskPage({ onOpenActionModal }) {
+   const { sys4 } = useData();
+-
+-  const atRiskAccounts = sys4.collectionQueue
+-    .filter(c => c.riskScore > 30 || c.pastDue > 0)
+-    .slice(0, 3);
++  const atRiskAccounts = sys4.collectionQueue.filter(c => c.payScore >= 60 || c.maxDaysOverdue > 60).slice(0, 4);
+ 
+   return (
+     <div className="space-y-6">
+-      <div className="flex flex-wrap items-end justify-between gap-4">
+-        <div>
+-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+-            RECEIVABLES
+-          </p>
+-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
+-            <ShieldAlert className="size-6 text-[#ef4444]" />
+-            Money at Risk (${(sys4.moneyAtRisk / 1000).toFixed(0)}K)
+-          </h1>
+-          <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+-            {atRiskAccounts.length} accounts holding ${sys4.moneyAtRisk.toLocaleString()} in high-risk receivables out of ${sys4.totalAR.toLocaleString()} total open AR.
+-          </p>
+-        </div>
++      <div>
++        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
++        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2"><ShieldAlert className="size-6 text-[#ef4444]" /> Money at Risk (${(sys4.moneyAtRisk / 1000).toFixed(0)}K)</h1>
++        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Receivable risk only: payment behaviour, aging and ECL. Inventory recovery signals are deferred to Module 6 Cross Domain Intelligence.</p>
+       </div>
+ 
+-      <div className="grid gap-4 md:grid-cols-3">
+-        {atRiskAccounts.map((item) => (
++      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
++        {atRiskAccounts.map(item => (
+           <div key={item.id} className="card-surface p-5 border-l-4 border-l-[#ef4444] space-y-3">
+-            <div className="flex justify-between items-start">
+-              <div>
+-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ef4444] bg-[#ef4444]/10 px-2 py-0.5 rounded-full">
+-                  {item.riskScore > 60 ? 'Critical' : 'Elevated'} Risk
+-                </span>
+-                <h3 className="text-base font-bold text-foreground mt-2">{item.name}</h3>
+-              </div>
+-              <span className="text-xl font-bold text-[#ef4444]">${item.pastDue.toLocaleString()}</span>
+-            </div>
+-
+-            <div className="text-xs text-muted-foreground space-y-1">
+-              <p>Total Balance: <span className="font-semibold text-foreground">${item.balance.toLocaleString()}</span></p>
+-              <p>Avg Days to Pay: <span className="font-semibold text-foreground">{item.avgDaysToPay} days</span></p>
+-              <p>i2C PayScore: <span className="font-semibold text-foreground">{item.riskScore}/100</span></p>
++            <div className="flex justify-between items-start gap-3">
++              <div><span className="text-[10px] font-bold uppercase tracking-wider text-[#ef4444] bg-[#ef4444]/10 px-2 py-0.5 rounded-full">{item.payScoreRiskTier} risk</span><h3 className="text-base font-bold text-foreground mt-2">{item.name}</h3></div>
++              <span className="text-lg font-bold text-[#ef4444]">${item.pastDue.toLocaleString()}</span>
+             </div>
+-
+-            <p className="text-xs bg-surface p-2.5 rounded-lg border border-border leading-relaxed text-foreground">
+-              {item.inventoryDeliveredValue
+-                ? `$${item.inventoryDeliveredValue.toLocaleString()} physical inventory delivered on unpaid invoices is recoverable.`
+-                : `Account velocity delayed by ${item.avgDaysLate} days past terms.`}
+-            </p>
+-
+-            <button
+-              onClick={() => onOpenActionModal({ title: item.action, details: item.name })}
+-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0d9488] hover:bg-[#0f766e] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer"
+-            >
+-              <CheckCircle2 className="size-3.5" />
+-              {item.action}
+-            </button>
++            <div className="text-xs text-muted-foreground space-y-1"><p>Open AR: <strong className="text-foreground">${item.balance.toLocaleString()}</strong></p><p>Expected credit loss: <strong className="text-foreground">${Math.round(item.ecl).toLocaleString()}</strong></p><p>Oldest overdue: <strong className="text-foreground">{item.maxDaysOverdue} days</strong></p><p>PayScore: <strong className="text-foreground">{item.payScore}/100</strong></p></div>
++            <p className="text-xs bg-surface p-2.5 rounded-lg border border-border leading-relaxed text-foreground">{item.payScoreBasis}</p>
++            <button onClick={() => onOpenActionModal({ title: item.action, details: `${item.name} · ECL $${Math.round(item.ecl).toLocaleString()}`, reason: item.payScoreBasis, risk: `$${item.pastDue.toLocaleString()} past due`, priority: item.priorityTier, confidence: item.payScoreConfidence })} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0d9488] hover:bg-[#0f766e] px-3.5 py-2 text-xs font-semibold text-white cursor-pointer"><CheckCircle2 className="size-3.5" />{item.action}</button>
+           </div>
+         ))}
+       </div>
++
++      <div className="card-surface overflow-x-auto">
++        <div className="p-4 border-b border-border"><h2 className="text-sm font-bold text-foreground">Highest ECL invoices</h2><p className="text-xs text-muted-foreground">Per-invoice reserve using Decision Systems Design v1 PD/LGD.</p></div>
++        <table className="w-full min-w-[760px] text-xs"><thead className="bg-surface text-muted-foreground uppercase"><tr><th className="p-3 text-left">Invoice</th><th className="p-3 text-left">Customer</th><th className="p-3 text-right">Balance</th><th className="p-3 text-right">Age</th><th className="p-3 text-right">Adjusted PD</th><th className="p-3 text-right">ECL</th></tr></thead><tbody className="divide-y divide-border">{[...sys4.invoices].sort((a,b)=>b.ecl-a.ecl).slice(0,8).map(inv=><tr key={inv.invoiceNo}><td className="p-3 font-semibold text-foreground">{inv.invoiceNo}</td><td className="p-3 text-muted-foreground">{inv.customerName}</td><td className="p-3 text-right">${inv.balanceDue.toLocaleString()}</td><td className="p-3 text-right">{inv.daysOverdue}d</td><td className="p-3 text-right">{(inv.adjustedPD*100).toFixed(1)}%</td><td className="p-3 text-right font-bold text-[#ef4444]">${Math.round(inv.ecl).toLocaleString()}</td></tr>)}</tbody></table>
++      </div>
+     </div>
+   );
+ }
+diff --git a/src/pages/CollectionsPage.jsx b/src/pages/CollectionsPage.jsx
+index 4d36e3c..521fb45 100644
+--- a/src/pages/CollectionsPage.jsx
++++ b/src/pages/CollectionsPage.jsx
+@@ -2,6 +2,8 @@ import React from 'react';
+ import { ListOrdered, AlertTriangle } from 'lucide-react';
+ import { useData } from '../context/DataContext';
+ 
++const tierClass = tier => tier === 'P1' ? 'bg-[#ef4444]/10 text-[#ef4444]' : tier === 'P2' ? 'bg-[#f59e0b]/10 text-[#b45309]' : tier === 'P3' ? 'bg-[#0d9488]/10 text-[#0d9488]' : 'bg-surface text-muted-foreground';
++
+ export default function CollectionsPage({ onOpenActionModal }) {
+   const { sys4 } = useData();
+ 
+@@ -9,61 +11,37 @@ export default function CollectionsPage({ onOpenActionModal }) {
+     <div className="space-y-6">
+       <div className="flex flex-wrap items-end justify-between gap-4">
+         <div>
+-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+-            RECEIVABLES
+-          </p>
++          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
+           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
+-            <ListOrdered className="size-6 text-[#0d9488]" />
+-            Collections Priority Queue
++            <ListOrdered className="size-6 text-[#0d9488]" /> Collections Priority Queue
+           </h1>
+-          <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+-            Ranked dynamically by expected recovery value, customer PayScore, and historical payment responsiveness (System 4 Sub-Area A).
+-          </p>
++          <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Ranked from live AR age, amount exposure, PayScore, payment history and disputes.</p>
+         </div>
+       </div>
+ 
+-      {sys4.payScoreModel?.status === 'provisional' && (
+-        <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/10 p-4 text-xs text-foreground flex gap-3">
+-          <AlertTriangle className="size-4 shrink-0 text-[#f59e0b]" />
+-          <div><strong>PayScore model is provisional.</strong> The supplied Decision Systems document defines the seven weights but delegates the component transformations to the separate i2C Intelligence Specification. Workspace overrides remain authoritative where supplied.</div>
+-        </div>
+-      )}
++      <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/10 p-4 text-xs text-foreground flex gap-3">
++        <AlertTriangle className="size-4 shrink-0 text-[#f59e0b]" />
++        <div><strong>Priority score calibration is provisional.</strong> The source defines the five score components and P1/P2/P3 thresholds, but not every calibrated component weight. The factor breakdown is visible per row so the ranking is explainable.</div>
++      </div>
+ 
+-      <div className="card-surface overflow-hidden">
+-        <table className="w-full text-left text-xs">
++      <div className="card-surface overflow-x-auto">
++        <table className="w-full min-w-[980px] text-left text-xs">
+           <thead className="bg-surface border-b border-border text-muted-foreground uppercase font-semibold">
+             <tr>
+-              <th className="p-3.5">Priority Rank</th>
+-              <th className="p-3.5">Customer Name</th>
+-              <th className="p-3.5">Total Balance</th>
+-              <th className="p-3.5">Past Due</th>
+-              <th className="p-3.5">PayScore / Priority</th>
+-              <th className="p-3.5 text-right">Action</th>
++              <th className="p-3.5">Rank</th><th className="p-3.5">Customer</th><th className="p-3.5">Open AR</th><th className="p-3.5">Past Due</th><th className="p-3.5">Avg Late</th><th className="p-3.5">PayScore</th><th className="p-3.5">Priority</th><th className="p-3.5 text-right">Action</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y divide-border">
+             {sys4.collectionQueue.map((item, idx) => (
+-              <tr key={item.id} className="hover:bg-surface/50 transition-colors">
++              <tr key={item.id} className="hover:bg-surface/50 transition-colors align-top">
+                 <td className="p-3.5 font-bold text-[#0d9488]">#{idx + 1}</td>
+-                <td className="p-3.5 font-bold text-foreground">{item.name}</td>
+-                <td className="p-3.5 text-foreground">${item.balance.toLocaleString()}</td>
++                <td className="p-3.5"><p className="font-bold text-foreground">{item.name}</p><p className="mt-1 text-[10px] text-muted-foreground">Oldest {item.maxDaysOverdue}d · {item.openInvoiceCount} open invoice{item.openInvoiceCount === 1 ? '' : 's'}</p></td>
++                <td className="p-3.5 font-semibold text-foreground">${item.balance.toLocaleString()}</td>
+                 <td className="p-3.5 font-semibold text-[#ef4444]">${item.pastDue.toLocaleString()}</td>
+-                <td className="p-3.5">
+-                  <div className="flex items-center gap-2">
+-                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${item.riskScore > 60 ? 'bg-[#ef4444]/10 text-[#ef4444]' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>
+-                      {item.riskScore} PayScore
+-                    </span>
+-                    <span className="text-[10px] font-semibold text-muted-foreground">({item.priorityTier})</span>
+-                  </div>
+-                </td>
+-                <td className="p-3.5 text-right">
+-                  <button
+-                    onClick={() => onOpenActionModal({ title: item.action, details: `${item.name} - Past Due $${item.pastDue.toLocaleString()}` })}
+-                    className="inline-flex items-center gap-1 rounded-lg bg-[#0d9488] px-3 py-1 text-xs font-semibold text-white hover:bg-[#0f766e] cursor-pointer"
+-                  >
+-                    {item.action}
+-                  </button>
+-                </td>
++                <td className="p-3.5 text-foreground">{item.avgDaysLate}d</td>
++                <td className="p-3.5"><span className="font-bold text-foreground">{item.payScore}</span><p className="text-[10px] text-muted-foreground">{item.payScoreRiskTier} · {item.payScoreConfidence}% conf.</p></td>
++                <td className="p-3.5"><span className={`inline-flex rounded-full px-2 py-0.5 font-bold ${tierClass(item.priorityTier)}`}>{item.priorityTier} · {item.priorityScore}</span><p className="mt-1 max-w-[230px] text-[10px] leading-relaxed text-muted-foreground">{item.priorityFactors.map(f => `${f.name} ${f.value}`).join(' · ')}</p></td>
++                <td className="p-3.5 text-right"><button onClick={() => onOpenActionModal({ title: item.action, details: `${item.name} · Open AR $${item.balance.toLocaleString()} · PayScore ${item.payScore} · ${item.maxDaysOverdue} days oldest overdue`, reason: item.payScoreBasis, risk: `Past-due exposure $${item.pastDue.toLocaleString()}`, priority: item.priorityTier, confidence: item.payScoreConfidence })} className="inline-flex rounded-lg bg-[#0d9488] px-3 py-1.5 font-semibold text-white hover:bg-[#0f766e] cursor-pointer">{item.action}</button></td>
+               </tr>
+             ))}
+           </tbody>
+diff --git a/src/pages/CustomersPage.jsx b/src/pages/CustomersPage.jsx
+index c0404d2..ba25880 100644
+--- a/src/pages/CustomersPage.jsx
++++ b/src/pages/CustomersPage.jsx
+@@ -1,63 +1,65 @@
+-import React from 'react';
+-import { Users } from 'lucide-react';
++import React, { useMemo, useState } from 'react';
++import { Users, ChevronDown, ChevronUp } from 'lucide-react';
+ import { useData } from '../context/DataContext';
+ 
+-export default function CustomersPage({ onOpenActionModal }) {
++const money = value => `$${Math.round(Number(value || 0)).toLocaleString()}`;
++
++export default function CustomersPage() {
+   const { sys4 } = useData();
++  const [expandedId, setExpandedId] = useState(null);
++  const invoiceByCustomer = useMemo(() => {
++    const map = new Map();
++    (sys4.invoices || []).forEach(inv => {
++      if (!map.has(inv.customerId)) map.set(inv.customerId, []);
++      map.get(inv.customerId).push(inv);
++    });
++    return map;
++  }, [sys4.invoices]);
+ 
+   return (
+     <div className="space-y-6">
+-      <div className="flex flex-wrap items-end justify-between gap-4">
+-        <div>
+-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+-            RECEIVABLES
+-          </p>
+-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
+-            <Users className="size-6 text-[#0d9488]" />
+-            Customer Accounts ({sys4.creditManagement.length})
+-          </h1>
+-          <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+-            Complete list of active customer accounts, AR aging, PayScores, and recommended credit limits (System 4 Sub-Area B).
+-          </p>
+-        </div>
++      <div>
++        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
++        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2"><Users className="size-6 text-[#0d9488]" /> Customer Accounts ({sys4.creditManagement.length})</h1>
++        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Customer-level AR, aging, payment history, PayScore, credit utilization and invoice ECL drill-down.</p>
+       </div>
+ 
+-      <div className="card-surface overflow-hidden">
+-        <table className="w-full text-left text-xs">
+-          <thead className="bg-surface border-b border-border text-muted-foreground uppercase font-semibold">
+-            <tr>
+-              <th className="p-3.5">Customer</th>
+-              <th className="p-3.5">Open AR Balance</th>
+-              <th className="p-3.5">Credit Limit (Current / Rec)</th>
+-              <th className="p-3.5">Avg Days to Pay</th>
+-              <th className="p-3.5">Risk Tier</th>
+-              <th className="p-3.5 text-right">PayScore</th>
+-            </tr>
+-          </thead>
++      <div className="card-surface overflow-x-auto">
++        <table className="w-full min-w-[980px] text-left text-xs">
++          <thead className="bg-surface border-b border-border text-muted-foreground uppercase font-semibold"><tr><th className="p-3.5">Customer</th><th className="p-3.5">Open AR</th><th className="p-3.5">Past Due</th><th className="p-3.5">Credit Util.</th><th className="p-3.5">Avg Late</th><th className="p-3.5">PayScore</th><th className="p-3.5">ECL</th><th className="p-3.5"></th></tr></thead>
+           <tbody className="divide-y divide-border">
+-            {sys4.creditManagement.map((c) => (
+-              <tr key={c.id} className="hover:bg-surface/50 transition-colors">
+-                <td className="p-3.5 font-bold text-foreground">{c.name}</td>
+-                <td className="p-3.5 font-semibold text-foreground">${c.balance.toLocaleString()}</td>
+-                <td className="p-3.5 text-muted-foreground">
+-                  ${c.creditLimit.toLocaleString()} / <span className="font-semibold text-[#0d9488]">${c.recommendedLimit.toLocaleString()}</span>
+-                  {c.isBreached && <span className="ml-1 text-[10px] font-bold text-[#ef4444]">(Breached)</span>}
+-                </td>
+-                <td className="p-3.5 text-muted-foreground">{c.avgDaysToPay} days</td>
+-                <td className="p-3.5">
+-                  <span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${
+-                    c.riskScore > 60 ? 'bg-[#ef4444]/10 text-[#ef4444]' :
+-                    c.riskScore > 30 ? 'bg-[#f59e0b]/10 text-[#f59e0b]' : 'bg-[#16a34a]/10 text-[#16a34a]'
+-                  }`}>
+-                    {c.riskScore > 60 ? 'Critical' : c.riskScore > 30 ? 'Elevated' : 'Healthy'}
+-                  </span>
+-                </td>
+-                <td className="p-3.5 text-right font-bold text-foreground">{c.riskScore}</td>
+-              </tr>
+-            ))}
++            {sys4.creditManagement.map(c => {
++              const expanded = expandedId === c.id;
++              const invoices = invoiceByCustomer.get(c.id) || [];
++              return <React.Fragment key={c.id}>
++                <tr className="hover:bg-surface/50 transition-colors">
++                  <td className="p-3.5"><p className="font-bold text-foreground">{c.name}</p><p className="text-[10px] text-muted-foreground">{c.openInvoiceCount} open invoice{c.openInvoiceCount === 1 ? '' : 's'}</p></td>
++                  <td className="p-3.5 font-semibold text-foreground">{money(c.balance)}</td>
++                  <td className="p-3.5 font-semibold text-[#ef4444]">{money(c.pastDue)}</td>
++                  <td className="p-3.5"><span className="font-semibold text-foreground">{c.creditUtilization == null ? '—' : `${c.creditUtilization}%`}</span><p className="text-[10px] text-muted-foreground">Limit {money(c.creditLimit)} · Rec {money(c.recommendedLimit)}</p></td>
++                  <td className="p-3.5 text-foreground">{c.avgDaysLate}d <p className="text-[10px] text-muted-foreground">{c.paymentHistoryCount} payments</p></td>
++                  <td className="p-3.5"><span className={`inline-flex rounded-full px-2 py-0.5 font-bold text-[10px] ${c.payScoreRiskTier === 'CRITICAL' ? 'bg-[#ef4444]/10 text-[#ef4444]' : c.payScoreRiskTier === 'HIGH' ? 'bg-[#f59e0b]/10 text-[#b45309]' : c.payScoreRiskTier === 'MEDIUM' ? 'bg-[#0d9488]/10 text-[#0d9488]' : 'bg-[#16a34a]/10 text-[#16a34a]'}`}>{c.payScore} · {c.payScoreRiskTier}</span><p className="mt-1 text-[10px] text-muted-foreground">{c.payScoreConfidence}% confidence</p></td>
++                  <td className="p-3.5 font-bold text-foreground">{money(c.ecl)}</td>
++                  <td className="p-3.5 text-right"><button onClick={() => setExpandedId(expanded ? null : c.id)} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 font-semibold text-foreground hover:bg-surface cursor-pointer">Details {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}</button></td>
++                </tr>
++                {expanded && <tr><td colSpan="8" className="bg-surface/40 p-4"><CustomerDetail customer={c} invoices={invoices} /></td></tr>}
++              </React.Fragment>;
++            })}
+           </tbody>
+         </table>
+       </div>
+     </div>
+   );
+ }
++
++function CustomerDetail({ customer, invoices }) {
++  return (
++    <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
++      <div className="space-y-3">
++        <div className="rounded-xl border border-border bg-card p-4"><h3 className="text-sm font-bold text-foreground">PayScore basis</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{customer.payScoreBasis}</p><p className="mt-2 text-[10px] font-semibold text-[#f59e0b]">Provisional until the full Intelligence Specification is available.</p></div>
++        <div className="rounded-xl border border-border bg-card p-4"><h3 className="text-sm font-bold text-foreground">Aging by bucket</h3><div className="mt-3 grid grid-cols-2 gap-2">{Object.entries(customer.agingBuckets).map(([bucket, value]) => <div key={bucket} className="rounded-lg bg-surface p-2"><p className="text-[10px] text-muted-foreground">{bucket}</p><p className="text-xs font-bold text-foreground">{money(value)}</p></div>)}</div></div>
++      </div>
++      <div className="rounded-xl border border-border bg-card overflow-x-auto"><table className="w-full min-w-[650px] text-xs"><thead className="bg-surface text-muted-foreground uppercase"><tr><th className="p-3 text-left">Invoice</th><th className="p-3 text-right">Balance</th><th className="p-3 text-right">Days overdue</th><th className="p-3 text-left">Bucket</th><th className="p-3 text-right">PD</th><th className="p-3 text-right">ECL</th></tr></thead><tbody className="divide-y divide-border">{invoices.sort((a,b)=>b.daysOverdue-a.daysOverdue).map(inv => <tr key={inv.invoiceNo}><td className="p-3 font-semibold text-foreground">{inv.invoiceNo}</td><td className="p-3 text-right">{money(inv.balanceDue)}</td><td className="p-3 text-right">{inv.daysOverdue}</td><td className="p-3 text-muted-foreground">{inv.agingBucket}</td><td className="p-3 text-right">{(inv.adjustedPD * 100).toFixed(1)}%</td><td className="p-3 text-right font-bold text-[#ef4444]">{money(inv.ecl)}</td></tr>)}</tbody></table></div>
++    </div>
++  );
++}
+diff --git a/src/pages/ReceivablesPage.jsx b/src/pages/ReceivablesPage.jsx
+new file mode 100644
+index 0000000..2e1097a
+--- /dev/null
++++ b/src/pages/ReceivablesPage.jsx
+@@ -0,0 +1,119 @@
++import React from 'react';
++import { WalletCards, ShieldCheck, AlertTriangle, Clock3 } from 'lucide-react';
++import { useData } from '../context/DataContext';
++
++const bucketOrder = ['Current', '1-30', '31-60', '61-90', '91-120', '120+'];
++
++function money(value) {
++  return `$${Math.round(Number(value || 0)).toLocaleString()}`;
++}
++
++export default function ReceivablesPage() {
++  const { sys4 } = useData();
++  const ar = sys4.receivables || sys4;
++  const pastDue = bucketOrder.slice(1).reduce((sum, key) => sum + Number(ar.aging?.buckets?.[key] || 0), 0);
++  const pastDuePct = ar.totalAR > 0 ? (pastDue / ar.totalAR) * 100 : 0;
++
++  return (
++    <div className="space-y-6">
++      <div className="flex flex-wrap items-end justify-between gap-4">
++        <div>
++          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
++          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
++            <WalletCards className="size-6 text-[#0d9488]" /> Receivables Control Center
++          </h1>
++          <p className="mt-1.5 max-w-3xl text-xs sm:text-sm text-muted-foreground">
++            AR aging, payment behaviour, PayScore, collection priority and expected credit loss computed from the active manual-data workspace.
++          </p>
++        </div>
++        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${ar.aging?.reconciled ? 'bg-[#16a34a]/10 text-[#16a34a] ring-[#16a34a]/20' : 'bg-[#ef4444]/10 text-[#ef4444] ring-[#ef4444]/20'}`}>
++          {ar.aging?.reconciled ? 'AR aging reconciled' : `AR drift ${money(ar.aging?.reconciliationDelta)}`}
++        </span>
++      </div>
++
++      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
++        <Metric icon={WalletCards} label="Open AR" value={money(ar.totalAR)} detail={`${ar.openInvoiceCount} open invoices`} />
++        <Metric icon={Clock3} label="Past Due" value={money(pastDue)} detail={`${pastDuePct.toFixed(1)}% of open AR`} />
++        <Metric icon={AlertTriangle} label="Required ECL" value={money(ar.totalECL)} detail={`${ar.totalAR ? (ar.totalECL / ar.totalAR * 100).toFixed(1) : '0.0'}% of AR`} />
++        <Metric icon={ShieldCheck} label="Collectible AR" value={money(ar.collectibleAR)} detail={`After design-v1 ECL`} />
++      </div>
++
++      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
++        <section className="card-surface p-5">
++          <div className="mb-4 flex items-center justify-between gap-3">
++            <div>
++              <h2 className="text-base font-bold text-foreground">AR Aging</h2>
++              <p className="text-xs text-muted-foreground">Zero-drift bucket reconciliation against total open AR.</p>
++            </div>
++            <span className="text-xs font-semibold text-[#0d9488]">Total {money(ar.aging?.total)}</span>
++          </div>
++          <div className="space-y-3">
++            {bucketOrder.map(bucket => {
++              const value = Number(ar.aging?.buckets?.[bucket] || 0);
++              const pct = ar.totalAR ? value / ar.totalAR * 100 : 0;
++              return (
++                <div key={bucket}>
++                  <div className="mb-1 flex justify-between text-xs">
++                    <span className="font-semibold text-foreground">{bucket === 'Current' ? 'Current / not due' : `${bucket} days overdue`}</span>
++                    <span className="text-muted-foreground">{money(value)} · {pct.toFixed(1)}%</span>
++                  </div>
++                  <div className="h-2 overflow-hidden rounded-full bg-surface ring-1 ring-border ring-inset">
++                    <div className="h-full rounded-full bg-[#0d9488]" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
++                  </div>
++                </div>
++              );
++            })}
++          </div>
++        </section>
++
++        <section className="card-surface p-5 space-y-4">
++          <div>
++            <h2 className="text-base font-bold text-foreground">Risk Snapshot</h2>
++            <p className="text-xs text-muted-foreground">Highest-risk customer and single-invoice ECL exposure.</p>
++          </div>
++          {ar.highestRiskCustomer && (
++            <div className="rounded-xl border border-[#ef4444]/20 bg-[#ef4444]/5 p-4">
++              <p className="text-[10px] font-bold uppercase tracking-wider text-[#ef4444]">Highest PayScore</p>
++              <p className="mt-1 text-sm font-bold text-foreground">{ar.highestRiskCustomer.name}</p>
++              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
++                <span>PayScore <strong className="text-foreground">{ar.highestRiskCustomer.payScore}</strong></span>
++                <span>Avg late <strong className="text-foreground">{ar.highestRiskCustomer.avgDaysLate}d</strong></span>
++                <span>Open AR <strong className="text-foreground">{money(ar.highestRiskCustomer.balance)}</strong></span>
++                <span>ECL <strong className="text-foreground">{money(ar.highestRiskCustomer.ecl)}</strong></span>
++              </div>
++            </div>
++          )}
++          {ar.highestECLInvoice && (
++            <div className="rounded-xl border border-border bg-surface p-4 text-xs">
++              <p className="font-semibold text-foreground">Highest ECL invoice: {ar.highestECLInvoice.invoiceNo}</p>
++              <p className="mt-1 text-muted-foreground">{ar.highestECLInvoice.customerName} · {ar.highestECLInvoice.daysOverdue} days overdue</p>
++              <p className="mt-2 text-lg font-bold text-[#ef4444]">{money(ar.highestECLInvoice.ecl)}</p>
++            </div>
++          )}
++        </section>
++      </div>
++
++      <div className="grid gap-4 lg:grid-cols-2">
++        <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/10 p-4 text-xs leading-relaxed text-foreground">
++          <strong>PayScore is provisional.</strong> The current executable reference uses the supplied avg-days-late bands. The final seven-component transformations are still unavailable because the source document delegates them to the i2C Intelligence Specification.
++        </div>
++        <div className="rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-foreground">
++          <strong>ECL model:</strong> Decision Systems Design v1 PD schedule + {Math.round((ar.eclModel?.lgd || 0.85) * 100)}% LGD. This deliberately differs from the older simplified ECL rates in the Calculation Visuals workbook.
++        </div>
++      </div>
++    </div>
++  );
++}
++
++function Metric({ icon: Icon, label, value, detail }) {
++  return (
++    <div className="card-surface p-5">
++      <div className="flex items-center justify-between">
++        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
++        <Icon className="size-4 text-[#0d9488]" />
++      </div>
++      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
++      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
++    </div>
++  );
++}
+diff --git a/src/utils/decisionSystems.js b/src/utils/decisionSystems.js
+index ffc1000..910afdd 100644
+--- a/src/utils/decisionSystems.js
++++ b/src/utils/decisionSystems.js
+@@ -1,4 +1,5 @@
+ import phase1Config from '../config/phase1RuleConfig.json' with { type: 'json' };
++import { computeReceivablesModule } from '../domain/receivables.js';
+ 
+ /**
+  * i2cashflow Phase 1 decision engine.
+@@ -321,57 +322,19 @@ function provisionalPayScore(customer, customerShare, medianInvoice) {
+ }
+ 
+ export function computeSystem4(customersList, invoiceList, billList, vendorList, thresholds = DEFAULT_THRESHOLDS) {
+-  const openInvoices = invoiceList.filter(i => Number(i.balanceDue) > 0);
++  const receivables = computeReceivablesModule(customersList, invoiceList, thresholds);
+   const openBills = billList.filter(b => Number(b.balanceDue) > 0);
+-  const totalAR = openInvoices.reduce((s, i) => s + Number(i.balanceDue || 0), 0);
+-  const invoiceMedian = median(openInvoices.map(i => Number(i.balanceDue || 0)));
+-  const totalCustomerRevenue = customersList.reduce((s, c) => s + Number(c.revenueTrailing12m ?? c.avgMonthly * 12 ?? 0), 0) || 1;
+-
+-  const scoredCustomers = customersList.map(c => {
+-    const customerRevenue = Number(c.revenueTrailing12m ?? Number(c.avgMonthly || 0) * 12);
+-    const customerShare = customerRevenue / totalCustomerRevenue;
+-    const ps = provisionalPayScore(c, customerShare, invoiceMedian);
+-    return { ...c, payScore: ps.score, payScoreProvisional: ps.provisional, payScoreComponents: ps.components, payScoreAvailableComponents: ps.availableComponents, customerRevenueShare: customerShare };
+-  });
+-  const payScoreByCustomer = new Map(scoredCustomers.map(c => [c.id, c]));
+-
+-  const getPD = days => days <= 0 ? 0.01 : days <= 30 ? 0.03 : days <= 60 ? 0.08 : days <= 90 ? 0.22 : days <= 120 ? 0.45 : 0.68;
+-  let totalECL = 0;
+-  const eclInvoices = openInvoices.map(inv => {
+-    const customer = payScoreByCustomer.get(inv.customerId);
+-    let pd = getPD(Number(inv.daysOverdue || 0));
+-    if (customer?.payScore < 30) pd *= 0.5;
+-    else if (customer?.payScore > 80) pd *= 1.5;
+-    pd = clamp(pd, 0, 1);
+-    const ecl = Number(inv.balanceDue || 0) * pd * Number(thresholds.lgd_default || 0.85);
+-    totalECL += ecl;
+-    return { ...inv, payScore: customer?.payScore ?? 25, pd: round1(pd * 100), ecl: money(ecl) };
+-  });
+-  const collectibleAR = Math.max(0, totalAR - totalECL);
+-  const moneyAtRisk = eclInvoices.filter(i => i.payScore > 60 || i.daysOverdue > 60).reduce((s, i) => s + Number(i.balanceDue || 0), 0);
+-
+-  const collectionQueue = scoredCustomers.map(c => {
+-    const ageRisk = Math.max(0, Number(c.maxDaysOverdue || 0) / 30) * 20;
+-    const amountRisk = invoiceMedian > 0 ? (Number(c.balance || 0) / invoiceMedian) * 10 : 0;
+-    const paymentHistoryRisk = Math.max(0, Number(c.avgDaysLate || 0)) / 30 * 15;
+-    const disputeRisk = c.hasDispute ? 15 : 0;
+-    const customerRisk = c.payScore * 0.40;
+-    const priorityScore = clamp(Math.round(ageRisk + amountRisk + customerRisk + paymentHistoryRisk + disputeRisk), 0, 100);
+-    let priorityTier = 'P4'; let action = 'Automated reminder';
+-    if (priorityScore > 85) { priorityTier = 'P1 (Urgent)'; action = 'Owner-level call today'; }
+-    else if (priorityScore > 65) { priorityTier = 'P2 (High)'; action = 'Formal outreach within 72 hours'; }
+-    else if (priorityScore > 40) { priorityTier = 'P3 (Monitor)'; action = 'Standard reminder cycle'; }
+-    return { ...c, riskScore: c.payScore, priorityScore, priorityTier, action };
+-  }).sort((a, b) => b.priorityScore - a.priorityScore);
+-
+-  const creditManagement = collectionQueue.map(c => {
+-    const riskAdj = c.payScore < 30 ? 1.2 : c.payScore > 80 ? 0.4 : c.payScore > 60 ? 0.7 : 1.0;
+-    const baseLimit = Math.min(Number(c.avgMonthly || 0) * 2.5 || Number(c.creditLimit || 0), Number(c.maxMonthly || 0) * 1.3 || Number(c.creditLimit || 0));
+-    const utilization = Number(c.creditLimit || 0) > 0 ? Number(c.balance || 0) / Number(c.creditLimit) * 100 : 0;
+-    return { ...c, recommendedLimit: Math.max(0, Math.round((baseLimit * riskAdj) / 1000) * 1000), utilization: Math.round(utilization), isBreached: utilization > 100 };
+-  });
+ 
+-  // Kept for existing UI, but AP-001 is intentionally excluded from Phase 1 rule evaluation.
++  // Preserve legacy System 4 compatibility while Module 2 owns the AR side.
++  // Payables-specific intelligence is deliberately left for Module 3.
++  const creditManagement = receivables.customers.map(c => ({
++    ...c,
++    utilization: c.creditUtilization == null ? 0 : Math.round(c.creditUtilization),
++    isBreached: c.isCreditBreached,
++  }));
++
++  // Existing AP preview retained so old pages do not break. It is not part of
++  // Module 2 completion and no early-pay rule is added to the Module 2 feed.
+   const discountOpportunities = openBills.filter(b => Number(b.discountAvailable || 0) > 0).map(b => {
+     const discountAPR = Number(b.discountPercent || 0) > 0 && Number(b.netDays) > Number(b.discountDays)
+       ? (Number(b.discountPercent) / (100 - Number(b.discountPercent))) * (365 / (Number(b.netDays) - Number(b.discountDays)))
+@@ -380,12 +343,18 @@ export function computeSystem4(customersList, invoiceList, billList, vendorList,
+   });
+ 
+   return {
+-    totalAR: money(totalAR), totalECL: money(totalECL), collectibleAR: money(collectibleAR), moneyAtRisk: money(moneyAtRisk),
+-    eclInvoices, collectionQueue, creditManagement, discountOpportunities,
++    ...receivables,
++    // Compatibility aliases used by existing UI/rules.
++    eclInvoices: receivables.invoices.map(i => ({ ...i, pd: round1(i.adjustedPD * 100), ecl: money(i.ecl) })),
++    collectionQueue: receivables.collectionQueue,
++    creditManagement,
++    discountOpportunities,
+     totalDiscountSavings: money(discountOpportunities.reduce((s, d) => s + d.savings, 0)),
+-    bills: openBills, vendors: vendorList,
+-    payScoreModel: { status: collectionQueue.some(c => c.payScoreProvisional) ? 'provisional' : 'final', missingSpecification: 'i2C Intelligence Specification' },
+-    arGrowth: null, revenueGrowth: null,
++    bills: openBills,
++    vendors: vendorList,
++    arGrowth: null,
++    revenueGrowth: null,
++    receivables,
+   };
+ }
+ 

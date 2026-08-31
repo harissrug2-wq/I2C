@@ -1,0 +1,10 @@
+{
+  "as_of_date": "2026-08-15",
+  "revenue_last_30_days": 840000,
+  "cogs_last_30_days": 640000,
+  "operating_expenses_last_30_days": 80000,
+  "other_current_liabilities": 104400,
+  "forecast_baseline_other_outflows_60d": 120000,
+  "forecast_baseline_other_inflows_60d": 90000,
+  "other_expenses_last_30_days": 97200
+}
