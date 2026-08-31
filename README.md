@@ -88,3 +88,45 @@ Dashboard / AR / AP / Inventory / Forecast / Manual Data Entry
 ```
 
 The expected KPI file from the original handoff is treated as a test target, not a production data source.
+
+## Vercel Windows deployment fix
+
+This package includes a deployment hardening fix for Windows -> Vercel deployments:
+
+- `.vercelignore` explicitly excludes local `node_modules` and `dist`.
+- Vite is invoked through Node (`node ./node_modules/vite/bin/vite.js build`) rather than through the platform-specific `.bin/vite` shim.
+- Vercel uses `npm ci` and Node 22.x.
+
+Recommended clean deployment from Windows PowerShell / CMD:
+
+```bat
+rmdir /s /q node_modules
+rmdir /s /q dist
+rmdir /s /q .vercel
+npm ci
+npm run build
+vercel --prod --force
+```
+
+If `.vercel` does not exist, the `rmdir` warning can be ignored. Running `vercel --prod --force` will relink the project if necessary and forces a fresh deployment.
+
+
+## Windows clean install if npm reports EPERM
+
+`EPERM ... lightningcss.win32-x64-msvc.node` means Windows has the native module file open. Close any running Vite/Node terminals and editors using the project, then from **Command Prompt as Administrator** run:
+
+```bat
+taskkill /F /IM node.exe /T 2>nul
+cd /d C:\Users\haris.irfan\Documents\I2C
+attrib -R node_modules\* /S /D 2>nul
+rmdir /S /Q node_modules
+rmdir /S /Q dist 2>nul
+npm cache verify
+npm ci
+npm run build
+vercel --prod --force
+```
+
+If `rmdir` still says Access Denied, reboot Windows and run the commands before opening VS Code or starting any Node process.
+
+`vercel.json` includes a Vite SPA fallback, so direct URLs such as `/at-risk`, `/customers`, and `/forecast` are rewritten to `index.html` instead of returning Vercel `404: NOT_FOUND`.
