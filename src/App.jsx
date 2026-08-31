@@ -24,6 +24,7 @@ import ReceivablesPage from './pages/ReceivablesPage';
 import AtRiskPage from './pages/AtRiskPage';
 import CollectionsPage from './pages/CollectionsPage';
 import CustomersPage from './pages/CustomersPage';
+import PayablesPage from './pages/PayablesPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SuppliersPage from './pages/SuppliersPage';
 import MarginsPage from './pages/MarginsPage';
@@ -157,6 +158,8 @@ function AppContent() {
         return <CollectionsPage onOpenActionModal={setSelectedAction} />;
       case 'customers':
         return <CustomersPage onOpenActionModal={setSelectedAction} />;
+      case 'payables':
+        return <PayablesPage />;
       case 'payments':
         return <PaymentsPage onOpenActionModal={setSelectedAction} />;
       case 'suppliers':

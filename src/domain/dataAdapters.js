@@ -62,6 +62,54 @@ function customerPaymentStats(customerId, workspace) {
   };
 }
 
+
+function supplierPaymentStats(supplierId, workspace) {
+  const billByNo = new Map(workspace.bills.map(b => [b.bill_no, b]));
+  const supplier = workspace.suppliers.find(s => s.id === supplierId);
+  const rows = workspace.paymentsMade
+    .filter(payment => payment.supplier_id === supplierId)
+    .map(payment => ({ payment, bill: billByNo.get(payment.applied_to_bill) }))
+    .filter(row => row.bill);
+
+  if (!rows.length) {
+    return {
+      avgDaysLate: 0, paymentHistoryCount: 0, latePaymentCount: 0, onTimeRate: null,
+      discountsTakenCount: 0, discountsMissedCount: 0, discountCaptured: 0, discountForgone: 0,
+    };
+  }
+
+  const lateDays = rows.map(({ payment, bill }) => daysBetween(bill.due_date, payment.payment_date));
+  const latePaymentCount = lateDays.filter(days => days > 0).length;
+  const avgDaysLate = lateDays.reduce((sum, days) => sum + days, 0) / lateDays.length;
+  const discountPct = Number(supplier?.discount_pct || 0);
+  let discountsTakenCount = 0;
+  let discountsMissedCount = 0;
+  let discountCaptured = 0;
+  let discountForgone = 0;
+
+  rows.forEach(({ payment, bill }) => {
+    const taken = Number(payment.discount_taken || 0);
+    if (taken > 0) {
+      discountsTakenCount += 1;
+      discountCaptured += taken;
+    } else if (discountPct > 0) {
+      discountsMissedCount += 1;
+      discountForgone += Number(bill.total || 0) * discountPct / 100;
+    }
+  });
+
+  return {
+    avgDaysLate: Math.round(avgDaysLate * 10) / 10,
+    paymentHistoryCount: rows.length,
+    latePaymentCount,
+    onTimeRate: Math.round(((rows.length - latePaymentCount) / rows.length) * 1000) / 10,
+    discountsTakenCount,
+    discountsMissedCount,
+    discountCaptured: Math.round(discountCaptured),
+    discountForgone: Math.round(discountForgone),
+  };
+}
+
 function monthlyInvoiceStats(customerId, invoices) {
   const monthly = {};
   invoices.filter(i => i.customer_id === customerId).forEach(i => {
@@ -208,23 +256,27 @@ export function buildEngineInputs(workspace) {
     allPurchaseBySupplier[b.supplierId] = (allPurchaseBySupplier[b.supplierId] || 0) + b.amount;
   });
   const totalPurchases = Object.values(allPurchaseBySupplier).reduce((s, n) => s + n, 0) || 1;
-  const vendors = workspace.suppliers.map(s => ({
-    id: s.id,
-    name: s.name,
-    email: s.email,
-    phone: s.phone,
-    category: s.category,
-    apBalance: Math.round(openPurchaseBySupplier[s.id] || 0),
-    terms: s.terms,
-    leadTimeDays: Number(s.lead_time_days || 0),
-    leadTimePromised: Number(s.lead_time_days || 0),
-    cogsShare: (allPurchaseBySupplier[s.id] || 0) / totalPurchases,
-    hasEarlyPay: bills.some(b => b.supplierId === s.id && b.balanceDue > 0 && b.discountAvailable > 0),
-    netDays: Number(s.net_days || parseTermsDays(s.terms)),
-    relationshipRating: s.relationship_rating || null,
-    allowsExtension: s.allows_extension == null ? null : Boolean(s.allows_extension),
-    singleSourceForClassA: s.single_source_for_class_a == null ? null : Boolean(s.single_source_for_class_a),
-  }));
+  const vendors = workspace.suppliers.map(s => {
+    const paymentStats = supplierPaymentStats(s.id, workspace);
+    return {
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      phone: s.phone,
+      category: s.category,
+      apBalance: Math.round(openPurchaseBySupplier[s.id] || 0),
+      terms: s.terms,
+      leadTimeDays: Number(s.lead_time_days || 0),
+      leadTimePromised: Number(s.lead_time_days || 0),
+      cogsShare: (allPurchaseBySupplier[s.id] || 0) / totalPurchases,
+      hasEarlyPay: bills.some(b => b.supplierId === s.id && b.balanceDue > 0 && b.discountAvailable > 0),
+      netDays: Number(s.net_days || parseTermsDays(s.terms)),
+      relationshipRating: s.relationship_rating || null,
+      allowsExtension: s.allows_extension == null ? null : Boolean(s.allows_extension),
+      singleSourceForClassA: s.single_source_for_class_a == null ? null : Boolean(s.single_source_for_class_a),
+      ...paymentStats,
+    };
+  });
 
   const cashBalance = workspace.bankAccounts.reduce((s, a) => s + Number(a.balance || 0), 0);
   return {

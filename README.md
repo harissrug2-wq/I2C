@@ -6,7 +6,7 @@ The deployable Vite application lives directly at the repository root.
 
 1. Manual Data Collection Integration (CSV) — implemented
 2. Receivables — implemented checkpoint
-3. Payables — next
+3. Payables — implemented checkpoint
 4. Cash Forecasting
 5. Inventory
 6. Cross Domain Intelligence
@@ -58,6 +58,7 @@ Vercel can deploy this repository with the **Root Directory left blank / reposit
 - Phase 1 engine smoke test
 - Module 1 CSV import tests
 - Module 2 Receivables tests
+- Module 3 Payables tests
 
 ## Data and persistence
 
@@ -66,3 +67,7 @@ The current manual workspace persists in browser `localStorage`. QuickBooks and 
 ## Receivables note
 
 The supplied source material does not include the complete universal seven-component PayScore transformation specification. The current all-customer PayScore model remains explicitly provisional until that specification is available.
+
+## Payables note
+
+Module 3 uses the canonical seed / Calculations Breakdown reference for active discount opportunities: 3 bills totaling $3,653. The supplied Expected AP worksheet also lists BILL-8851 as discounted, which conflicts with the canonical seed field `discount_available: 0`; the engine therefore does not invent that fourth active discount. Full AR→AP chained discount funding remains deferred to Module 6.

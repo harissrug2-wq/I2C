@@ -7,11 +7,12 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs",
+    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs",
     "reconcile": "node scripts/reconcile.mjs",
     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
     "test:module1": "node scripts/module1-csv-tests.mjs",
-    "test:module2": "node scripts/module2-receivables-tests.mjs"
+    "test:module2": "node scripts/module2-receivables-tests.mjs",
+    "test:module3": "node scripts/module3-payables-tests.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

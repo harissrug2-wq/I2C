@@ -50,6 +50,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
     {
       label: 'PAYABLES',
       items: [
+        { id: 'payables', label: 'Payables overview', icon: WalletCards },
         { id: 'payments', label: 'Payment priority', icon: CircleDollarSign },
         { id: 'suppliers', label: 'Suppliers', icon: Building2 },
       ]

@@ -1,5 +1,6 @@
 import phase1Config from '../config/phase1RuleConfig.json' with { type: 'json' };
 import { computeReceivablesModule } from '../domain/receivables.js';
+import { evaluatePayablesRules } from '../domain/payables.js';
 
 /**
  * i2cashflow Phase 1 decision engine.
@@ -451,17 +452,11 @@ export function evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds = DEFAULT
   }
   if (sys4.arGrowth != null && sys4.revenueGrowth != null && sys4.arGrowth > sys4.revenueGrowth + Number(config['COL-005'].growthGapPctPoints)) out.push(advisory({ id:'COL-005', system:'AR + AP (Collections)', domain:'Receivables', priority:'HIGH', finding:'AR is growing materially faster than revenue.', reason:`AR growth ${round1(sys4.arGrowth*100)}% versus revenue growth ${round1(sys4.revenueGrowth*100)}%.`, risk:'Portfolio-level collection performance is deteriorating.', recommendedAction:'Investigate collection process, customer mix and credit policy.', contributors:[`AR growth ${round1(sys4.arGrowth*100)}%`,`Revenue growth ${round1(sys4.revenueGrowth*100)}%`], confidence:85 }));
 
-  // Basic AP prioritisation. AP-001 early-pay optimisation is Phase 2.
-  const classAVendorIds = new Set(sys2.skus.filter(s => s.abcClass === 'A').map(s => s.supplierId));
-  for (const b of sys4.bills || []) {
-    const overdue = Number(b.daysOverdue || 0) > 0;
-    const vendor = (sys4.vendors || []).find(v => v.id === b.supplierId);
-    if (overdue && classAVendorIds.has(b.supplierId) && vendor?.singleSourceForClassA !== false) out.push(advisory({ id:'AP-002', entityId:b.billNo, system:'AR + AP (Payables)', domain:'Payables', priority:'CRITICAL', finding:`${b.billNo} is overdue for a supplier supporting Class A inventory.`, reason:`${b.vendorName} supplies at least one Class A SKU.`, risk:'Supplier hold or disruption can affect high-value inventory availability.', recommendedAction:'Pay immediately or resolve the supplier hold risk today.', contributors:[`Bill ${b.billNo}`,`Vendor ${b.vendorName}`,'Class A supply exposure'], confidence:80 }));
-    if (overdue && vendor?.relationshipRating === 'strong') out.push(advisory({ id:'AP-003', entityId:b.billNo, system:'AR + AP (Payables)', domain:'Payables', priority:'MEDIUM', finding:`${b.billNo} is overdue with a strong vendor relationship.`, reason:'The relationship supports a limited grace-period response.', risk:'Repeated delay can still weaken otherwise strong terms.', recommendedAction:'Pay within the agreed grace period.', contributors:[`Bill ${b.billNo}`,'Relationship rating strong'], confidence:82 }));
-    const daysUntilDue = b.dueDate && b.asOfDate ? diffDays(b.asOfDate, b.dueDate) : null;
-    const forecastTight = sys3.cashToday + sys3.inflow30d < sys3.outflow30d * Number(thresholds.coverage_multiplier ?? 1.2);
-    if (daysUntilDue != null && daysUntilDue >= 0 && daysUntilDue <= Number(config['AP-004'].dueWithinDays) && forecastTight && vendor?.allowsExtension === true) out.push(advisory({ id:'AP-004', entityId:b.billNo, system:'AR + AP (Payables)', domain:'Payables', priority:'MEDIUM', finding:`${b.billNo} is due within ${config['AP-004'].dueWithinDays} days while cash coverage is tight.`, reason:`${b.vendorName} allows a payment extension.`, risk:'Paying on the original date can worsen the near-term cash position.', recommendedAction:'Request a 15-day extension.', contributors:[`Due in ${daysUntilDue} days`,'Cash forecast tight','Vendor extension allowed'], confidence:82 }));
-  }
+  // Module 3 owns AP rule evaluation. AP-002/003/004 remain part of the
+  // Phase 1 rule registry; AP-001 is exposed by Module 3 as discount visibility
+  // without cross-domain chained optimization.
+  const payablesForRules = sys4.payables || { bills: sys4.bills || [], suppliers: sys4.vendors || [] };
+  out.push(...evaluatePayablesRules(payablesForRules, sys3, thresholds, { includeAP001: false }));
 
   // System 5 Phase 1 — concentration only.
   if (sys5.top1VendorShareRaw > Number(thresholds.vendor_single_share ?? config['VDC-001'].singleVendorShare)) out.push(advisory({ id:'VDC-001', system:'Others — Vendor Concentration', domain:'Concentration', priority:'HIGH', finding:`Largest vendor represents ${round1(sys5.top1VendorShareRaw*100)}% of purchases.`, reason:'Single-vendor dependence exceeds the configured threshold.', risk:'A supplier disruption could materially affect purchasing continuity.', recommendedAction:'Develop a backup source urgently.', contributors:[`Top vendor ${round1(sys5.top1VendorShareRaw*100)}%`,`Top 3 vendors ${round1(sys5.top3VendorShareRaw*100)}%`], confidence:82 }));

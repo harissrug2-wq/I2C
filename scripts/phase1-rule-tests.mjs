@@ -51,7 +51,7 @@ has('COL-004',x=>x.sys4.collectionQueue=[{...cust,promisedPaymentDate:'2026-08-0
 has('COL-005',x=>Object.assign(x.sys4,{arGrowth:.30,revenueGrowth:.10}));
 has('COL-006',x=>x.sys4.collectionQueue=[{...cust,daysSincePreferredChannelContact:15}]);
 
-has('AP-002',x=>{x.sys2.skus=[{...skuBase,abcClass:'A',supplierId:'V1'}];x.sys4.bills=[{billNo:'B1',supplierId:'V1',vendorName:'Vendor',daysOverdue:1}];x.sys4.vendors=[{id:'V1'}];});
+has('AP-002',x=>{x.sys2.skus=[{...skuBase,abcClass:'A',supplierId:'V1'}];x.sys4.bills=[{billNo:'B1',supplierId:'V1',vendorName:'Vendor',daysOverdue:1}];x.sys4.vendors=[{id:'V1',singleSourceForClassA:true}];});
 has('AP-003',x=>{x.sys4.bills=[{billNo:'B1',supplierId:'V1',vendorName:'Vendor',daysOverdue:1}];x.sys4.vendors=[{id:'V1',relationshipRating:'strong'}];});
 has('AP-004',x=>{Object.assign(x.sys3,{cashToday:100,inflow30d:100,outflow30d:500});x.sys4.bills=[{billNo:'B1',supplierId:'V1',vendorName:'Vendor',daysOverdue:0,dueDate:'2026-08-20',asOfDate:'2026-08-15'}];x.sys4.vendors=[{id:'V1',allowsExtension:true}];});
 
