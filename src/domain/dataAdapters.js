@@ -43,24 +43,22 @@ function invoicePaymentsForCustomer(customerId, workspace) {
 
 function customerPaymentStats(customerId, workspace) {
   const rows = invoicePaymentsForCustomer(customerId, workspace);
-  if (!rows.length) return { avgDaysLate: 0, avgDaysToPay: parseTermsDays(workspace.customers.find(c => c.id === customerId)?.terms), riskScore: 25 };
+  if (!rows.length) return { avgDaysLate: 0, avgDaysToPay: parseTermsDays(workspace.customers.find(c => c.id === customerId)?.terms), stdDevDaysLate: 0, historyCount: 0 };
 
   const lateDays = rows.map(({ payment, invoice }) => daysBetween(invoice.due_date, payment.payment_date));
   const payDays = rows.map(({ payment, invoice }) => Math.max(0, daysBetween(invoice.invoice_date, payment.payment_date)));
   const avgDaysLate = lateDays.reduce((s, n) => s + n, 0) / lateDays.length;
   const avgDaysToPay = payDays.reduce((s, n) => s + n, 0) / payDays.length;
 
-  let riskScore = 25;
-  if (avgDaysLate < 0) riskScore = 15;
-  else if (avgDaysLate <= 5) riskScore = 25;
-  else if (avgDaysLate <= 15) riskScore = 45;
-  else if (avgDaysLate <= 30) riskScore = 60;
-  else riskScore = 78;
+  const variance = lateDays.length > 1
+    ? lateDays.reduce((sum, n) => sum + Math.pow(n - avgDaysLate, 2), 0) / (lateDays.length - 1)
+    : 0;
 
   return {
     avgDaysLate: Math.round(avgDaysLate * 10) / 10,
     avgDaysToPay: Math.round(avgDaysToPay),
-    riskScore,
+    stdDevDaysLate: Math.round(Math.sqrt(variance) * 10) / 10,
+    historyCount: rows.length,
   };
 }
 
@@ -124,18 +122,26 @@ export function buildEngineInputs(workspace) {
       termsDays: parseTermsDays(c.terms),
       avgDaysLate: pay.avgDaysLate,
       avgDaysToPay: pay.avgDaysToPay,
+      stdDevDaysLate: pay.stdDevDaysLate,
+      paymentHistoryCount: pay.historyCount,
+      maxDaysOverdue: open.length ? Math.max(...open.map(i => daysOverdue(i.due_date, asOfDate))) : 0,
+      hasDispute: open.some(i => String(i.status || '').toLowerCase().includes('disput')),
+      asOfDate,
       maxMonthly: monthly.maxMonthly,
       avgMonthly: monthly.avgMonthly,
       creditLimit: Number(c.credit_limit || 0),
       brokenPromises: Number(c.broken_promises || 0),
       preferredChannel: c.preferred_channel || 'email',
-      riskScore: Number(c.risk_score_override ?? pay.riskScore),
+      promisedPaymentDate: c.promised_payment_date || null,
+      daysSincePreferredChannelContact: c.days_since_preferred_channel_contact == null ? null : Number(c.days_since_preferred_channel_contact),
+      riskScoreOverride: c.risk_score_override == null ? null : Number(c.risk_score_override),
       inventoryDeliveredValue: Math.round(delivered[c.id] || 0),
       isClassA: monthly.avgMonthly >= 50000,
     };
   });
 
-  const riskByCustomer = new Map(customers.map(c => [c.id, c.riskScore]));
+  const riskByCustomer = new Map(customers.map(c => [c.id, c.riskScoreOverride ?? 25]));
+  const customerStatsById = new Map(customers.map(c => [c.id, c]));
   const invoices = workspace.invoices.map(i => ({
     id: i.invoice_no,
     invoiceNo: i.invoice_no,
@@ -150,6 +156,8 @@ export function buildEngineInputs(workspace) {
     paidDate: i.paid_date,
     daysOverdue: invoiceBalance(i) > 0 ? daysOverdue(i.due_date, asOfDate) : 0,
     riskScore: riskByCustomer.get(i.customer_id) ?? 25,
+    customerAvgDaysLate: customerStatsById.get(i.customer_id)?.avgDaysLate || 0,
+    customerStdDevDaysLate: customerStatsById.get(i.customer_id)?.stdDevDaysLate || 0,
   }));
 
   const products = workspace.products.map(p => ({
@@ -188,6 +196,8 @@ export function buildEngineInputs(workspace) {
       discountPercent: Number(supplier?.discount_pct || 0),
       discountDays: Number(supplier?.discount_days || 0),
       netDays: Number(supplier?.net_days || parseTermsDays(b.terms)),
+      daysOverdue: billBalance(b) > 0 ? daysOverdue(b.due_date, asOfDate) : 0,
+      asOfDate,
     };
   });
 
@@ -211,6 +221,9 @@ export function buildEngineInputs(workspace) {
     cogsShare: (allPurchaseBySupplier[s.id] || 0) / totalPurchases,
     hasEarlyPay: bills.some(b => b.supplierId === s.id && b.balanceDue > 0 && b.discountAvailable > 0),
     netDays: Number(s.net_days || parseTermsDays(s.terms)),
+    relationshipRating: s.relationship_rating || null,
+    allowsExtension: s.allows_extension == null ? null : Boolean(s.allows_extension),
+    singleSourceForClassA: s.single_source_for_class_a == null ? null : Boolean(s.single_source_for_class_a),
   }));
 
   const cashBalance = workspace.bankAccounts.reduce((s, a) => s + Number(a.balance || 0), 0);
@@ -222,14 +235,28 @@ export function buildEngineInputs(workspace) {
     products,
     bills,
     vendors,
-    metrics: {
-      revenue30d: Number(workspace.companyMetrics?.revenue_last_30_days || 0),
-      cogs30d: Number(workspace.companyMetrics?.cogs_last_30_days || 0),
-      operatingExpenses30d: Number(workspace.companyMetrics?.operating_expenses_last_30_days || 0),
-      otherExpenses30d: Number(workspace.companyMetrics?.other_expenses_last_30_days || 0),
-      otherCurrentLiabilities: Number(workspace.companyMetrics?.other_current_liabilities || 0),
-      baselineOtherOutflows60d: Number(workspace.companyMetrics?.forecast_baseline_other_outflows_60d || 0),
-      baselineOtherInflows60d: Number(workspace.companyMetrics?.forecast_baseline_other_inflows_60d || 0),
-    }
+    metrics: (() => {
+      const withinDays = (date, days) => date && daysBetween(date, asOfDate) >= 0 && daysBetween(date, asOfDate) <= days;
+      const purchases90 = workspace.bills.filter(b => withinDays(b.bill_date, 90)).reduce((s, b) => s + Number(b.total || 0), 0);
+      const revenue90Observed = workspace.invoices.filter(i => withinDays(i.invoice_date, 90)).reduce((s, i) => s + Number(i.total || 0), 0);
+      const actualInflows60d = workspace.paymentsReceived.filter(p => withinDays(p.payment_date, 60)).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const actualOutflows60d = workspace.paymentsMade.filter(p => withinDays(p.payment_date, 60)).reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+      const revenue30d = Number(workspace.companyMetrics?.revenue_last_30_days || 0);
+      const cogs30d = Number(workspace.companyMetrics?.cogs_last_30_days || 0);
+      return {
+        periodDays: 90,
+        periodSource: '90d purchases + observed/annualised company metrics',
+        revenuePeriod: revenue90Observed > 0 ? revenue90Observed : revenue30d * 3,
+        cogsPeriod: cogs30d * 3,
+        purchasesPeriod: purchases90,
+        revenue30d, cogs30d,
+        operatingExpenses30d: Number(workspace.companyMetrics?.operating_expenses_last_30_days || 0),
+        otherExpenses30d: Number(workspace.companyMetrics?.other_expenses_last_30_days || 0),
+        otherCurrentLiabilities: Number(workspace.companyMetrics?.other_current_liabilities || 0),
+        actualInflows60d, actualOutflows60d,
+        monthlyPayroll: workspace.companyMetrics?.monthly_payroll == null ? null : Number(workspace.companyMetrics.monthly_payroll),
+        wcmHistory: Array.isArray(workspace.companyMetrics?.wcm_history) ? workspace.companyMetrics.wcm_history : [],
+      };
+    })()
   };
 }

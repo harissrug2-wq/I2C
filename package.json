@@ -4,11 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node ./node_modules/vite/bin/vite.js --host",
-    "build": "node ./node_modules/vite/bin/vite.js build",
-    "preview": "node ./node_modules/vite/bin/vite.js preview",
-    "test": "node scripts/reconcile.mjs",
-    "reconcile": "node scripts/reconcile.mjs"
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs",
+    "reconcile": "node scripts/reconcile.mjs",
+    "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
+    "test:module1": "node scripts/module1-csv-tests.mjs",
+    "test:module2": "node scripts/module2-receivables-tests.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -30,6 +33,6 @@
     "vite": "^6.0.7"
   },
   "engines": {
-    "node": ">=22 <25"
+    "node": "22.x"
   }
 }

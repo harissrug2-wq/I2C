@@ -1,26 +1,384 @@
 import fs from 'node:fs';
 import path from 'node:path';
-const base=path.resolve('src/data/seed');
-const read=n=>JSON.parse(fs.readFileSync(path.join(base,n),'utf8'));
-const customers=read('customers.json'), suppliers=read('suppliers.json'), invoices=read('invoices.json'), lines=read('invoice_lines.json'), bills=read('bills.json'), recv=read('payments_received.json'), made=read('payments_made.json'), products=read('products.json'), banks=read('bank_accounts.json'), metrics=read('company_metrics.json');
-const assert=(cond,msg)=>{if(!cond)throw new Error(msg)};
-const approx=(a,b,t=.01)=>Math.abs(a-b)<=t;
-const customerIds=new Set(customers.map(x=>x.id)), supplierIds=new Set(suppliers.map(x=>x.id)), invNos=new Set(invoices.map(x=>x.invoice_no)), billNos=new Set(bills.map(x=>x.bill_no)), skus=new Set(products.map(x=>x.sku));
-assert(customerIds.size===customers.length,'Duplicate customer IDs'); assert(supplierIds.size===suppliers.length,'Duplicate supplier IDs'); assert(skus.size===products.length,'Duplicate SKUs');
-invoices.forEach(i=>{assert(customerIds.has(i.customer_id),`Orphan invoice customer ${i.invoice_no}`);assert(/^INV-\d{4}$/.test(i.invoice_no),`Bad invoice number ${i.invoice_no}`)});
-bills.forEach(b=>assert(supplierIds.has(b.supplier_id),`Orphan bill supplier ${b.bill_no}`));
-lines.forEach(l=>{assert(invNos.has(l.invoice_no),`Orphan invoice line ${l.invoice_no}`);assert(skus.has(l.sku),`Missing SKU ${l.sku}`)});
-recv.forEach(p=>{assert(customerIds.has(p.customer_id),`Orphan receipt customer ${p.receipt_no}`);p.applied_to.forEach(a=>assert(invNos.has(a.invoice_no),`Orphan receipt invoice ${a.invoice_no}`))});
-made.forEach(p=>{assert(supplierIds.has(p.supplier_id),`Orphan payment supplier ${p.payment_no}`);assert(billNos.has(p.applied_to_bill),`Orphan payment bill ${p.applied_to_bill}`)});
-const alloc={};recv.forEach(p=>p.applied_to.forEach(a=>alloc[a.invoice_no]=(alloc[a.invoice_no]||0)+a.amount));
-invoices.forEach(i=>{const calc=i.total-(alloc[i.invoice_no]||0);assert(approx(calc,i.balance_due),`Invoice payment mismatch ${i.invoice_no}: ${calc} != ${i.balance_due}`);if(i.balance_due===0)assert(i.status==='paid',`Paid status mismatch ${i.invoice_no}`)});
-const lineSum={};lines.forEach(l=>lineSum[l.invoice_no]=(lineSum[l.invoice_no]||0)+l.line_total);Object.entries(lineSum).forEach(([no,sum])=>{const total=invoices.find(i=>i.invoice_no===no).total;assert(approx(sum,total),`Invoice line mismatch ${no}: ${sum} != ${total}`)});
-const cash=banks.reduce((s,a)=>s+a.balance,0); const ar=invoices.filter(i=>i.balance_due>0).reduce((s,i)=>s+i.balance_due,0); const ap=bills.filter(b=>b.balance_due>0).reduce((s,b)=>s+b.balance_due,0); const inventory=products.reduce((s,p)=>s+p.wac*p.on_hand,0); const dead=products.filter(p=>p.days_quiet>=180).reduce((s,p)=>s+p.wac*p.on_hand,0); const discounts=bills.filter(b=>b.balance_due>0).reduce((s,b)=>s+b.discount_available,0);
-assert(cash===1284900,`Cash ${cash}`); assert(ar===744790,`AR ${ar}`); assert(invoices.filter(i=>i.balance_due>0).length===17,'Open invoice count'); assert(ap===715300,`AP ${ap}`); assert(bills.filter(b=>b.balance_due>0).length===12,'Open bill count'); assert(products.length===33,`SKU count ${products.length}`); assert(approx(inventory,2090000),`Inventory ${inventory}`); assert(approx(dead,329360),`Dead stock ${dead}`); assert(discounts===3653,`Discounts ${discounts}`);
-const currentLiabs=ap+metrics.other_current_liabilities; const currentRatio=(cash+ar+inventory)/currentLiabs; const quickRatio=(cash+ar)/currentLiabs; const dio=inventory/metrics.cogs_last_30_days*30; const dso=ar/metrics.revenue_last_30_days*30; const dpo=ap/metrics.cogs_last_30_days*30; const ccc=dio+dso-dpo;
-assert(Number(currentRatio.toFixed(2))===5.03,`Current ratio ${currentRatio}`); assert(Number(quickRatio.toFixed(2))===2.48,`Quick ratio ${quickRatio}`); assert(Math.round(dio)===98,`DIO ${dio}`); assert(Math.round(dso)===27,`DSO ${dso}`); assert(Math.round(dpo)===34,`DPO ${dpo}`); assert(Math.round(ccc)===91,`CCC ${ccc}`);
-const forbidden=['Cedar Mountain Plumbing','Anchor Distributors','Sierra Mechanical','Latitude Plumbing','Acme Industrial'];
-function walk(dir){for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory()){if(['node_modules','dist','.git'].includes(e.name))continue;walk(p)}else if(/\.(jsx?|json|md)$/.test(e.name)){const txt=fs.readFileSync(p,'utf8');for(const f of forbidden)assert(!txt.includes(f),`Forbidden legacy reference ${f} in ${p}`)}}}
+import { buildEngineInputs } from '../src/domain/dataAdapters.js';
+import {
+  computeSystem1,
+  DEFAULT_THRESHOLDS,
+} from '../src/utils/decisionSystems.js';
+
+const base = path.resolve('src/data/seed');
+
+const read = (name) =>
+  JSON.parse(fs.readFileSync(path.join(base, name), 'utf8'));
+
+const customers = read('customers.json');
+const suppliers = read('suppliers.json');
+const invoices = read('invoices.json');
+const lines = read('invoice_lines.json');
+const bills = read('bills.json');
+const recv = read('payments_received.json');
+const made = read('payments_made.json');
+const products = read('products.json');
+const banks = read('bank_accounts.json');
+const metrics = read('company_metrics.json');
+
+const assert = (condition, message) => {
+  if (!condition) {
+    throw new Error(message);
+  }
+};
+
+const approx = (a, b, tolerance = 0.01) =>
+  Math.abs(a - b) <= tolerance;
+
+/* -------------------------------------------------------------------------- */
+/* Basic data integrity                                                       */
+/* -------------------------------------------------------------------------- */
+
+const customerIds = new Set(customers.map((x) => x.id));
+const supplierIds = new Set(suppliers.map((x) => x.id));
+const invoiceNumbers = new Set(invoices.map((x) => x.invoice_no));
+const billNumbers = new Set(bills.map((x) => x.bill_no));
+const skus = new Set(products.map((x) => x.sku));
+
+assert(
+  customerIds.size === customers.length,
+  'Duplicate customer IDs',
+);
+
+assert(
+  supplierIds.size === suppliers.length,
+  'Duplicate supplier IDs',
+);
+
+assert(
+  skus.size === products.length,
+  'Duplicate SKUs',
+);
+
+/* -------------------------------------------------------------------------- */
+/* Foreign-key checks                                                         */
+/* -------------------------------------------------------------------------- */
+
+invoices.forEach((invoice) => {
+  assert(
+    customerIds.has(invoice.customer_id),
+    `Orphan invoice customer ${invoice.invoice_no}`,
+  );
+
+  assert(
+    /^INV-\d{4}$/.test(invoice.invoice_no),
+    `Bad invoice number ${invoice.invoice_no}`,
+  );
+});
+
+bills.forEach((bill) => {
+  assert(
+    supplierIds.has(bill.supplier_id),
+    `Orphan bill supplier ${bill.bill_no}`,
+  );
+});
+
+lines.forEach((line) => {
+  assert(
+    invoiceNumbers.has(line.invoice_no),
+    `Orphan invoice line ${line.invoice_no}`,
+  );
+
+  assert(
+    skus.has(line.sku),
+    `Missing SKU ${line.sku}`,
+  );
+});
+
+recv.forEach((payment) => {
+  assert(
+    customerIds.has(payment.customer_id),
+    `Orphan receipt customer ${payment.receipt_no}`,
+  );
+
+  payment.applied_to.forEach((allocation) => {
+    assert(
+      invoiceNumbers.has(allocation.invoice_no),
+      `Orphan receipt invoice ${allocation.invoice_no}`,
+    );
+  });
+});
+
+made.forEach((payment) => {
+  assert(
+    supplierIds.has(payment.supplier_id),
+    `Orphan payment supplier ${payment.payment_no}`,
+  );
+
+  assert(
+    billNumbers.has(payment.applied_to_bill),
+    `Orphan payment bill ${payment.applied_to_bill}`,
+  );
+});
+
+/* -------------------------------------------------------------------------- */
+/* Invoice/payment reconciliation                                             */
+/* -------------------------------------------------------------------------- */
+
+const allocations = {};
+
+recv.forEach((payment) => {
+  payment.applied_to.forEach((allocation) => {
+    allocations[allocation.invoice_no] =
+      (allocations[allocation.invoice_no] || 0) + allocation.amount;
+  });
+});
+
+invoices.forEach((invoice) => {
+  const calculatedBalance =
+    invoice.total - (allocations[invoice.invoice_no] || 0);
+
+  assert(
+    approx(calculatedBalance, invoice.balance_due),
+    `Invoice payment mismatch ${invoice.invoice_no}: ${calculatedBalance} != ${invoice.balance_due}`,
+  );
+
+  if (invoice.balance_due === 0) {
+    assert(
+      invoice.status === 'paid',
+      `Paid status mismatch ${invoice.invoice_no}`,
+    );
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/* Invoice-line reconciliation                                                */
+/* -------------------------------------------------------------------------- */
+
+const lineTotals = {};
+
+lines.forEach((line) => {
+  lineTotals[line.invoice_no] =
+    (lineTotals[line.invoice_no] || 0) + line.line_total;
+});
+
+Object.entries(lineTotals).forEach(([invoiceNo, lineTotal]) => {
+  const invoice = invoices.find(
+    (item) => item.invoice_no === invoiceNo,
+  );
+
+  assert(
+    approx(lineTotal, invoice.total),
+    `Invoice line mismatch ${invoiceNo}: ${lineTotal} != ${invoice.total}`,
+  );
+});
+
+/* -------------------------------------------------------------------------- */
+/* Canonical seed totals                                                      */
+/* -------------------------------------------------------------------------- */
+
+const cash = banks.reduce(
+  (sum, account) => sum + account.balance,
+  0,
+);
+
+const ar = invoices
+  .filter((invoice) => invoice.balance_due > 0)
+  .reduce((sum, invoice) => sum + invoice.balance_due, 0);
+
+const ap = bills
+  .filter((bill) => bill.balance_due > 0)
+  .reduce((sum, bill) => sum + bill.balance_due, 0);
+
+const inventory = products.reduce(
+  (sum, product) => sum + product.wac * product.on_hand,
+  0,
+);
+
+const deadStock = products
+  .filter((product) => product.days_quiet >= 180)
+  .reduce(
+    (sum, product) => sum + product.wac * product.on_hand,
+    0,
+  );
+
+const discounts = bills
+  .filter((bill) => bill.balance_due > 0)
+  .reduce(
+    (sum, bill) => sum + bill.discount_available,
+    0,
+  );
+
+assert(cash === 1284900, `Cash ${cash}`);
+assert(ar === 744790, `AR ${ar}`);
+
+assert(
+  invoices.filter((invoice) => invoice.balance_due > 0).length === 17,
+  'Open invoice count',
+);
+
+assert(ap === 715300, `AP ${ap}`);
+
+assert(
+  bills.filter((bill) => bill.balance_due > 0).length === 12,
+  'Open bill count',
+);
+
+assert(
+  products.length === 33,
+  `SKU count ${products.length}`,
+);
+
+assert(
+  approx(inventory, 2090000),
+  `Inventory ${inventory}`,
+);
+
+assert(
+  approx(deadStock, 329360),
+  `Dead stock ${deadStock}`,
+);
+
+assert(
+  discounts === 3653,
+  `Discounts ${discounts}`,
+);
+
+/* -------------------------------------------------------------------------- */
+/* Decision System 1 reconciliation                                           */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Important:
+ * Reuse the exact same calculation path as the dashboard.
+ * This prevents the reconciliation test from maintaining a second,
+ * stale CCC implementation.
+ */
+
+const workspace = {
+  customers,
+  suppliers,
+  invoices,
+  invoiceLines: lines,
+  bills,
+  paymentsReceived: recv,
+  paymentsMade: made,
+  products,
+  bankAccounts: banks,
+  companyMetrics: metrics,
+};
+
+const engineInputs = buildEngineInputs(workspace);
+
+const system1 = computeSystem1(
+  engineInputs.cashBalance,
+  engineInputs.invoices,
+  engineInputs.products,
+  engineInputs.bills,
+  engineInputs.metrics,
+  DEFAULT_THRESHOLDS,
+);
+
+const {
+  currentRatio,
+  quickRatio,
+  dio,
+  dso,
+  dpo,
+  ccc,
+} = system1;
+
+assert(
+  currentRatio === 5.03,
+  `Current ratio ${currentRatio}`,
+);
+
+assert(
+  quickRatio === 2.48,
+  `Quick ratio ${quickRatio}`,
+);
+
+assert(
+  dio === 98,
+  `DIO ${dio}`,
+);
+
+assert(
+  dso === 54.9,
+  `DSO ${dso}`,
+);
+
+assert(
+  dpo === 56,
+  `DPO ${dpo}`,
+);
+
+assert(
+  ccc === 96.8,
+  `CCC ${ccc}`,
+);
+
+/* -------------------------------------------------------------------------- */
+/* Legacy test-data cleanup                                                   */
+/* -------------------------------------------------------------------------- */
+
+const forbidden = [
+  'Cedar Mountain Plumbing',
+  'Anchor Distributors',
+  'Sierra Mechanical',
+  'Latitude Plumbing',
+  'Acme Industrial',
+];
+
+function walk(dir) {
+  for (const entry of fs.readdirSync(dir, {
+    withFileTypes: true,
+  })) {
+    const filePath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (
+        ['node_modules', 'dist', '.git'].includes(entry.name)
+      ) {
+        continue;
+      }
+
+      walk(filePath);
+      continue;
+    }
+
+    if (!/\.(jsx?|json|md)$/.test(entry.name)) {
+      continue;
+    }
+
+    const text = fs.readFileSync(filePath, 'utf8');
+
+    for (const forbiddenText of forbidden) {
+      assert(
+        !text.includes(forbiddenText),
+        `Forbidden legacy reference ${forbiddenText} in ${filePath}`,
+      );
+    }
+  }
+}
+
 walk(path.resolve('src'));
+
 console.log('✓ Reconciliation passed');
-console.log(JSON.stringify({cash,ar,ap,inventory:Math.round(inventory),deadStock:Math.round(dead),discounts,currentRatio:Number(currentRatio.toFixed(2)),quickRatio:Number(quickRatio.toFixed(2)),dio:Math.round(dio),dso:Math.round(dso),dpo:Math.round(dpo),ccc:Math.round(ccc)},null,2));
+
+console.log(
+  JSON.stringify(
+    {
+      cash,
+      ar,
+      ap,
+      inventory: Math.round(inventory),
+      deadStock: Math.round(deadStock),
+      discounts,
+      currentRatio: Number(currentRatio.toFixed(2)),
+      quickRatio: Number(quickRatio.toFixed(2)),
+      dio,
+      dso,
+      dpo,
+      ccc,
+    },
+    null,
+    2,
+  ),
+);

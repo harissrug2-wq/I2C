@@ -5,20 +5,25 @@ import { useData } from '../context/DataContext';
 export default function ReorderPage({ onOpenActionModal }) {
   const { sys2, sys3 } = useData();
 
-  const reorders = sys2.skus.map(p => {
-    let recommendation = `Reorder ${p.eoq || 100} units at reorder point ${p.reorderPoint} (Safety stock ${p.safetyStock}).`;
-    if (p.inventoryValue > 50000 && sys3.floorGap > 0) {
-      recommendation = `Stage the reorder to reduce pressure around the projected $${sys3.lowPointCash.toLocaleString()} low point on ${sys3.lowPointDay}.`;
-    }
-
-    return {
-      sku: p.name,
-      cost: `$${p.inventoryValue.toLocaleString()}`,
-      landingDate: 'Calculated from lead time',
-      stockoutRisk: `${p.stockoutDays} days`,
-      recommendation
-    };
-  }).slice(0, 2);
+  const reorders = sys2.skus
+    .filter(p => p.category !== 'Non-stock' && p.leadTimeDays > 0 && (p.daysOfStock < p.leadTimeDays * 2 || p.onHand < p.reorderPoint))
+    .map(p => {
+      const urgency = p.daysOfStock < p.leadTimeDays ? 3 : p.daysOfStock < p.leadTimeDays * 1.5 ? 2 : 1;
+      let recommendation = `Reorder ${p.eoq || Math.max(1, p.reorderPoint - p.onHand)} units. Calculated reorder point: ${p.reorderPoint}; safety stock: ${p.safetyStock}.`;
+      if (p.inventoryValue > 50000 && sys3.floorGap > 0) {
+        recommendation = `Stockout risk is real, but stage the purchase around the projected $${sys3.lowPointCash.toLocaleString()} cash low point on ${sys3.lowPointDay}.`;
+      }
+      return {
+        sku: p.name,
+        cost: `$${p.inventoryValue.toLocaleString()}`,
+        stockoutRisk: `${p.stockoutDays} days`,
+        urgency,
+        abcClass: p.abcClass,
+        recommendation
+      };
+    })
+    .sort((a,b) => b.urgency - a.urgency || (a.abcClass === 'A' ? -1 : 1))
+    .slice(0, 6);
 
   return (
     <div className="space-y-6">

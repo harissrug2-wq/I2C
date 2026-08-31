@@ -5,8 +5,8 @@ import { useData } from '../context/DataContext';
 export default function HealthSummarySection({ onOpenActionModal }) {
   const { sys2, sys4, customers } = useData();
 
-  const criticalAR = sys4.collectionQueue.filter(c => c.riskScore > 60).reduce((s, c) => s + c.balance, 0);
-  const elevatedAR = sys4.collectionQueue.filter(c => c.riskScore > 30 && c.riskScore <= 60).reduce((s, c) => s + c.balance, 0);
+  const criticalAR = sys4.collectionQueue.filter(c => c.payScoreRiskTier === 'CRITICAL').reduce((s, c) => s + c.balance, 0);
+  const elevatedAR = sys4.collectionQueue.filter(c => ['HIGH','MEDIUM'].includes(c.payScoreRiskTier)).reduce((s, c) => s + c.balance, 0);
   const healthyAR = Math.max(0, sys4.totalAR - criticalAR - elevatedAR);
 
   const critPercent = Math.round((criticalAR / (sys4.totalAR || 1)) * 100);
@@ -81,7 +81,7 @@ export default function HealthSummarySection({ onOpenActionModal }) {
         </div>
 
         <p className="mt-4 rounded-lg bg-[#ef4444]/10 p-3 text-xs text-[#ef4444] font-medium ring-1 ring-[#ef4444]/20">
-          {critPercent}% of your receivables sit in the Critical risk tier. Two accounts drive all of it.
+          {critPercent}% of receivables sit in the Critical PayScore reference tier. PayScore remains provisional until the full component specification is available.
         </p>
       </article>
 

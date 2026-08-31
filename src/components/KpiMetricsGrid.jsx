@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 
 export default function KpiMetricsGrid({ onOpenActionModal }) {
   const { sys1, sys4, cashBalance, customers, metrics } = useData();
-  const atRiskAccounts=sys4.collectionQueue.filter(c=>c.riskScore>60||c.pastDue>0).length;
+  const atRiskAccounts=sys4.collectionQueue.filter(c=>c.payScore>=60||c.maxDaysOverdue>60).length;
   const grossMargin=metrics.revenue30d>0?((metrics.revenue30d-metrics.cogs30d)/metrics.revenue30d)*100:0;
   const cards=[
     {label:'Cash position',value:`$${cashBalance.toLocaleString()}`,sub:`Quick ratio ${sys1.quickRatio}`,icon:WalletCards},

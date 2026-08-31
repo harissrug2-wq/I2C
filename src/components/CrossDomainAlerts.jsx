@@ -1,14 +1,24 @@
 import React from 'react';
 import { Network, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+
 export default function CrossDomainAlerts({onOpenActionModal}){
- const {sys2,sys4,sys5}=useData();
- const hostage=sys4.collectionQueue.find(c=>c.inventoryDeliveredValue>0&&c.pastDue>0);
- const margin=[...sys5.trueMarginSkus].sort((a,b)=>b.marginErosionPts-a.marginErosionPts)[0];
- const cards=[
-   hostage&&{id:'recoverable',tag:'AR × Inventory',metricLabel:'Linked inventory cost',metricValue:`$${hostage.inventoryDeliveredValue.toLocaleString()}`,title:`${hostage.name} has overdue AR linked to delivered inventory.`,description:`About $${hostage.inventoryDeliveredValue.toLocaleString()} of inventory cost is linked through available invoice-line detail.`,recommendation:'Review return rights and physical recovery before any write-off.',confidence:'72% confidence'},
-   {id:'exposure',tag:'AR × Cash',metricLabel:'AR at risk',metricValue:`$${sys4.moneyAtRisk.toLocaleString()}`,title:'Slow collections are extending the cash cycle.',description:`Risk-scored receivables contribute to the current collection queue and cash forecast.`,recommendation:'Work the highest priority overdue accounts before committing discretionary cash.',confidence:'88% confidence'},
-   margin&&{id:'margin',tag:'Margin × Cash',metricLabel:'True margin',metricValue:`${margin.grossMarginPercent}% → ${margin.trueMarginPercent}%`,title:`${margin.name} shows the largest measured cash-carry margin erosion.`,description:`Payment timing reduces realized margin by ${margin.marginErosionPts} points under the configured cost of capital.`,recommendation:'Review pricing and credit terms together for this product line.',confidence:'91% confidence'}
- ].filter(Boolean);
- return <section className="mt-8"><header className="mb-4"><h2 className="text-lg sm:text-xl font-bold flex items-center gap-2"><Network className="size-5 text-[#0d9488]"/>Cross-domain alerts</h2><p className="mt-1 text-xs sm:text-sm text-muted-foreground">Findings joined from the active receivables, inventory, payables and cash dataset.</p></header><div className="grid gap-4 xl:grid-cols-3">{cards.map(c=><article key={c.id} className="rounded-xl bg-card p-5 border border-border border-l-4 border-l-[#0d9488]"><div className="flex justify-between gap-3"><span className="rounded-full bg-[#701a75]/10 px-2.5 py-1 text-[11px] font-semibold text-[#701a75]">{c.tag}</span><div className="text-right"><p className="text-[10px] uppercase text-muted-foreground">{c.metricLabel}</p><p className="text-sm font-bold">{c.metricValue}</p></div></div><h3 className="mt-3 text-base font-semibold">{c.title}</h3><p className="mt-2 text-xs text-muted-foreground leading-relaxed">{c.description}</p><div className="mt-3 rounded-lg bg-surface p-3 text-xs"><strong className="text-[#0d9488] block mb-1">Recommended action</strong>{c.recommendation}</div><p className="mt-3 text-[10px] text-[#16a34a] font-semibold">{c.confidence}</p><button onClick={()=>onOpenActionModal({title:'Cross-Domain Detail',type:c.id,details:c.description})} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0d9488] px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 className="size-3.5"/>View details <ArrowUpRight className="size-3"/></button></article>)}</div></section>;
+  const { advisories } = useData();
+  const cards = advisories.filter(a => a.domain === 'Concentration').slice(0,3);
+  if (!cards.length) return null;
+  return <section className="mt-8">
+    <header className="mb-4">
+      <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2"><Network className="size-5 text-[#0d9488]"/>Phase 1 concentration alerts</h2>
+      <p className="mt-1 text-xs sm:text-sm text-muted-foreground">Customer and vendor concentration findings from Decision System 5. Cross-domain chaining activates in Phase 2.</p>
+    </header>
+    <div className="grid gap-4 xl:grid-cols-3">
+      {cards.map(c=><article key={`${c.id}-${c.entityId||'workspace'}`} className="rounded-xl bg-card p-5 border border-border border-l-4 border-l-[#0d9488]">
+        <div className="flex justify-between gap-3"><span className="rounded-full bg-[#701a75]/10 px-2.5 py-1 text-[11px] font-semibold text-[#701a75]">{c.id}</span><span className="text-[10px] font-semibold text-[#16a34a]">{c.confidence}% confidence</span></div>
+        <h3 className="mt-3 text-base font-semibold">{c.finding}</h3>
+        <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{c.reason}</p>
+        <div className="mt-3 rounded-lg bg-surface p-3 text-xs"><strong className="text-[#0d9488] block mb-1">Recommended action</strong>{c.recommendedAction}</div>
+        <button onClick={()=>onOpenActionModal({title:c.id,type:c.id,details:c.finding})} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#0d9488] px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 className="size-3.5"/>View details <ArrowUpRight className="size-3"/></button>
+      </article>)}
+    </div>
+  </section>;
 }

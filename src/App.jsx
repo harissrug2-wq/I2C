@@ -20,6 +20,7 @@ import HealthSummarySection from './components/HealthSummarySection';
 import ForecastPage from './pages/ForecastPage';
 import AlertsPage from './pages/AlertsPage';
 import InsightsPage from './pages/InsightsPage';
+import ReceivablesPage from './pages/ReceivablesPage';
 import AtRiskPage from './pages/AtRiskPage';
 import CollectionsPage from './pages/CollectionsPage';
 import CustomersPage from './pages/CustomersPage';
@@ -148,6 +149,8 @@ function AppContent() {
         return <AlertsPage onOpenActionModal={setSelectedAction} />;
       case 'insights':
         return <InsightsPage onOpenActionModal={setSelectedAction} />;
+      case 'receivables':
+        return <ReceivablesPage />;
       case 'at-risk':
         return <AtRiskPage onOpenActionModal={setSelectedAction} />;
       case 'collections':

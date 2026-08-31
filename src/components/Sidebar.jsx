@@ -6,6 +6,7 @@ import {
   Bell, 
   Network, 
   ShieldAlert, 
+  WalletCards,
   ListOrdered, 
   Users, 
   CircleDollarSign, 
@@ -40,6 +41,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
     {
       label: 'RECEIVABLES',
       items: [
+        { id: 'receivables', label: 'Receivables overview', icon: WalletCards },
         { id: 'at-risk', label: 'Money at risk', icon: ShieldAlert },
         { id: 'collections', label: 'Collections priority', icon: ListOrdered },
         { id: 'customers', label: 'Customers', icon: Users },

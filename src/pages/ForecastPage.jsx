@@ -9,7 +9,7 @@ export default function ForecastPage({ onOpenActionModal }) {
   const [showDriverDetails, setShowDriverDetails] = useState(true);
 
   const horizonDays = Number(horizon);
-  const filteredPoints = sys3.points.filter((_, idx) => (idx * 3) <= horizonDays);
+  const filteredPoints = sys3.points.filter((_, idx) => idx <= horizonDays);
 
   return (
     <div className="space-y-6">
@@ -65,7 +65,7 @@ export default function ForecastPage({ onOpenActionModal }) {
           <div>
             <h2 className="text-base font-semibold text-foreground">Projection</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Solid line is the expected path; the shaded band is the 80% confidence range · Risk-weighted by i2C PayScore
+              Solid line is the expected path; the band reflects payment-timing uncertainty · Risk-weighted by i2C PayScore
             </p>
           </div>
           <div className="flex rounded-full bg-surface p-1 ring-1 ring-border ring-inset">
@@ -78,20 +78,24 @@ export default function ForecastPage({ onOpenActionModal }) {
               30 days
             </button>
             <button
+              disabled
+              title="Phase 2"
               onClick={() => setHorizon('60')}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                horizon === '60' ? 'bg-[#0d9488] text-white' : 'text-muted-foreground hover:text-foreground'
+                'text-muted-foreground opacity-50 cursor-not-allowed'
               }`}
             >
-              60 days
+              60 days · Phase 2
             </button>
             <button
+              disabled
+              title="Phase 2"
               onClick={() => setHorizon('90')}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                horizon === '90' ? 'bg-[#0d9488] text-white' : 'text-muted-foreground hover:text-foreground'
+                'text-muted-foreground opacity-50 cursor-not-allowed'
               }`}
             >
-              90 days
+              90 days · Phase 2
             </button>
           </div>
         </header>
