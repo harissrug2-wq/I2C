@@ -3,7 +3,7 @@
  *
  * Source hierarchy:
  * 1) DECISION SYSTEMS DESIGN / All Calculations for Development for rule/formula structure.
- * 2) Calculation Visuals workbook for executable seed-data reference outputs.
+ * 2) Calculation Visuals workbook for executable reference-fixture outputs.
  *
  * PayScore caveat:
  * The full seven-component transformations are explicitly delegated to the unavailable
@@ -285,7 +285,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
       status: customersWithECL.some(c => c.payScoreProvisional) ? 'provisional' : 'final',
       method: 'Simplified avg-days-late bands from Calculation Visuals workbook',
       missingSpecification: 'i2C Intelligence Specification',
-      sourceConflict: 'The Northgate deep-dive workbook also demonstrates a 7-component score of 66.2; the executable all-customer reference workbook uses 78 from avg-days-late bands.',
+      sourceConflict: 'A supplied deep-dive reference demonstrates a different seven-component score than the all-customer reference workbook; the current model therefore remains explicitly provisional.',
     },
     priorityModel: {
       status: 'provisional',

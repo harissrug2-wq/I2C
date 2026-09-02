@@ -3,7 +3,7 @@
  *
  * Source hierarchy:
  * 1) DECISION SYSTEMS DESIGN / All Calculations for Development for AP formulas and rules.
- * 2) Calculation Visuals + Manual Calculations workbooks for executable seed-data references.
+ * 2) Calculation Visuals + Manual Calculations workbooks for executable reference-fixture outputs.
  *
  * Module boundary:
  * - Owns AP aging, supplier exposure, bill sequencing, early-pay discount visibility,

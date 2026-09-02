@@ -24,7 +24,7 @@ export default function MarginsPage({ onOpenActionModal }) {
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <Receipt className="size-6 text-[#ef4444]" />
-            Margin Priority & Cost Creep (System 5)
+            Margin Priority & Cost Creep
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
             SKUs with realized gross margin erosion due to capital carrying costs, supplier price changes, or unadjusted price lists.

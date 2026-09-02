@@ -1,17 +1,9 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
 import { importCsvFiles, parseCsv, workspaceToCsv } from '../src/domain/csvImport.js';
 import { buildEngineInputs } from '../src/domain/dataAdapters.js';
+import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const readJson=name=>JSON.parse(fs.readFileSync(path.join(root,'src/data/seed',name),'utf8'));
-const workspace={
-  customers:readJson('customers.json'), suppliers:readJson('suppliers.json'), invoices:readJson('invoices.json'), invoiceLines:readJson('invoice_lines.json'),
-  bills:readJson('bills.json'), paymentsReceived:readJson('payments_received.json'), paymentsMade:readJson('payments_made.json'), products:readJson('products.json'),
-  bankAccounts:readJson('bank_accounts.json'), companyMetrics:readJson('company_metrics.json'),
-};
+const workspace = loadReferenceWorkspace();
 
 const parsed=parseCsv('id,name\r\nCUS-X,"Acme, Inc."\r\n');
 assert.equal(parsed.rows[0].name,'Acme, Inc.','quoted CSV fields must parse');
@@ -20,7 +12,7 @@ const datasets=['customers','suppliers','invoices','invoiceLines','bills','payme
 const filename={customers:'customers.csv',suppliers:'suppliers.csv',invoices:'invoices.csv',invoiceLines:'invoice_lines.csv',bills:'bills.csv',paymentsReceived:'payments_received.csv',paymentsMade:'payments_made.csv',products:'products.csv',bankAccounts:'bank_accounts.csv',companyMetrics:'company_metrics.csv'};
 const files=datasets.map(dataset=>({name:filename[dataset],text:workspaceToCsv(dataset,workspace)}));
 const result=await importCsvFiles(files,workspace);
-assert.equal(result.ok,true,`seed bundle must import: ${result.errors?.join('; ')}`);
+assert.equal(result.ok,true,`reference bundle must import: ${result.errors?.join('; ')}`);
 assert.equal(result.workspace.importMeta.completeBundle,true,'full operational bundle should be marked complete');
 
 const engine=buildEngineInputs(result.workspace);

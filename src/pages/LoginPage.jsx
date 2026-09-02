@@ -5,10 +5,10 @@ import { useData } from '../context/DataContext';
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const { loginUser } = useData();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('dana@harbourline.com');
-  const [password, setPassword] = useState('••••••••••••');
-  const [name, setName] = useState('Dana Mercer');
-  const [company, setCompany] = useState('Harbourline Distribution');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,11 +30,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     }, 400);
   };
 
-  const handleQuickSignIn = () => {
-    loginUser('dana@harbourline.com', 'Dana Mercer', 'Harbourline Distribution');
-    if (onLoginSuccess) onLoginSuccess();
-    else onNavigate('dashboard');
-  };
+
 
   return (
     <div className="min-h-screen bg-[#f8faf9] text-[#0f172a] flex flex-col font-sans">
@@ -79,8 +75,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 {isSignUp ? 'Setup your workspace' : 'Enter your workspace'}
               </h1>
               <p className="text-xs text-[#64748b] leading-relaxed">
-                {isSignUp 
-                  ? 'Start with the repaired demo dataset and enter live values manually. External integrations can be connected later.' 
+                {isSignUp
+                  ? 'Start with an empty workspace, then add records manually or import CSV files. External integrations can be connected later.'
                   : 'Access continuous receivables, payables, inventory velocity & cash horizon analytics.'
                 }
               </p>
@@ -111,7 +107,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Dana Mercer"
+                      placeholder="Your name"
                       className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
                     />
                   </div>
@@ -122,7 +118,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       required
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
-                      placeholder="e.g. Harbourline Distribution"
+                      placeholder="Your company"
                       className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
                     />
                   </div>
@@ -165,14 +161,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
             {/* Quick Access Action */}
             <div className="pt-2 border-t border-slate-200 text-center space-y-3">
-              <button
-                type="button"
-                onClick={handleQuickSignIn}
-                className="w-full rounded-full bg-slate-100 hover:bg-slate-200/80 py-2.5 px-4 text-xs font-semibold text-[#0f172a] transition-colors cursor-pointer"
-              >
-                ⚡ Quick Launch Dana Mercer's Workspace
-              </button>
-
               <div>
                 <button
                   onClick={() => onNavigate('landing')}
@@ -208,7 +196,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 </div>
                 <h3 className="font-bold text-xs text-white">Cash flow forecast</h3>
                 <p className="text-[11px] text-[#86a7a0] leading-relaxed">
-                  90-day projection with a confidence band and your low point marked.
+                  30-day operating projection with a confidence band and your low point marked.
                 </p>
               </div>
 

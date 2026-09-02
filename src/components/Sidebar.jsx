@@ -1,20 +1,19 @@
 import React from 'react';
 import { useData } from '../context/DataContext';
-import { 
-  LayoutDashboard, 
-  TrendingUp, 
-  Bell, 
-  Network, 
-  ShieldAlert, 
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Bell,
+  Network,
+  ShieldAlert,
   WalletCards,
-  ListOrdered, 
-  Users, 
-  CircleDollarSign, 
-  Building2, 
-  Receipt, 
-  Boxes, 
-  Package, 
-  PlugZap, 
+  ListOrdered,
+  Users,
+  CircleDollarSign,
+  Building2,
+  Boxes,
+  Package,
+  PlugZap,
   Lock,
   X,
   LogOut,
@@ -58,7 +57,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
     {
       label: 'INVENTORY',
       items: [
-        { id: 'margins', label: 'Margin priority', icon: Receipt },
+        { id: 'inventory', label: 'Inventory overview', icon: Boxes },
         { id: 'reorder', label: 'Reorder priority', icon: Boxes },
         { id: 'products', label: 'Products', icon: Package },
       ]
@@ -76,7 +75,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
+        <div
           onClick={onClose}
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
         />
@@ -92,12 +91,12 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
         {/* Header Branding */}
         <div className="flex flex-col p-4 gap-3">
           <div className="flex items-center justify-between">
-            <a 
-              href="/dashboard" 
+            <a
+              href="/dashboard"
               onClick={(e) => {
                 e.preventDefault();
                 setActiveTab('dashboard');
-              }} 
+              }}
               className="flex items-center gap-2.5 cursor-pointer"
             >
               <span className="flex size-9 items-center justify-center rounded-xl bg-[#bef264] text-[#112723] font-black text-xl shadow-xs shrink-0">
@@ -110,7 +109,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
                 </div>
               )}
             </a>
-            <button 
+            <button
               onClick={onClose}
               className="md:hidden text-sidebar-foreground/70 hover:text-white p-1"
             >
@@ -150,8 +149,8 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
                           onClose();
                         }}
                         className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-xs font-medium transition-colors cursor-pointer text-left
-                          ${isActive 
-                            ? 'bg-[#1a3f38] text-[#bef264] font-semibold' 
+                          ${isActive
+                            ? 'bg-[#1a3f38] text-[#bef264] font-semibold'
                             : 'text-[#9ebdb6] hover:bg-[#16352f] hover:text-white'
                           }
                           ${isCollapsed ? 'justify-center px-0' : ''}
@@ -180,9 +179,9 @@ export default function Sidebar({ isOpen, isCollapsed, onClose, activeTab, setAc
 
 function SidebarFooter({ setActiveTab }) {
   const { user, logoutUser } = useData();
-  const name = user?.name || 'Dana Mercer';
-  const company = user?.company || 'Harbourline Distribution';
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'DM';
+  const name = user?.name?.trim() || 'Workspace User';
+  const company = user?.company?.trim() || 'Your workspace';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'WU';
 
   return (
     <div className="p-4 border-t border-[#1a3832] bg-[#0e221f] space-y-3">
@@ -197,13 +196,13 @@ function SidebarFooter({ setActiveTab }) {
       </div>
 
       <div className="flex items-center justify-between text-[11px] text-[#86a7a0]">
-        <button 
+        <button
           onClick={() => setActiveTab('landing')}
           className="flex items-center gap-1 hover:text-[#bef264] transition-colors cursor-pointer"
         >
           <Home className="size-3.5" /> Landing Page
         </button>
-        <button 
+        <button
           onClick={() => { logoutUser(); setActiveTab('login'); }}
           className="flex items-center gap-1 hover:text-[#ef4444] transition-colors cursor-pointer"
         >

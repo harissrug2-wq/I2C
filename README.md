@@ -2,15 +2,17 @@
 
 The deployable Vite application lives directly at the repository root.
 
-## Current development modules
+## Development path
 
 1. Manual Data Collection Integration (CSV) — implemented
-2. Receivables — implemented checkpoint
-3. Payables — implemented checkpoint
-4. Cash Forecasting
-5. Inventory
-6. Cross Domain Intelligence
-7. Dynamic Integrations (QuickBooks, etc.)
+2. Receivables — implemented
+3. Payables — implemented
+4. Cash Forecasting — implemented
+5. Inventory — implemented
+6. Cross Domain Intelligence — next
+7. Dynamic Integrations (QuickBooks, etc.) — planned
+
+These numbers are development sequencing only and are not displayed in the product UI.
 
 ## Local development
 
@@ -22,8 +24,6 @@ npm test
 npm run dev
 ```
 
-The development server defaults to `http://localhost:3000` and will select another port if 3000 is already occupied.
-
 ## Production build
 
 ```bash
@@ -32,9 +32,26 @@ npm test
 npm run build
 ```
 
-Vercel can deploy this repository with the **Root Directory left blank / repository root**. The included `vercel.json` builds with `npm run build` and serves the Vite SPA from `dist`.
+Vercel deploys from the repository root. The included `vercel.json` builds with `npm run build` and serves the Vite SPA from `dist`.
 
-## Current verified seed reconciliation
+## Workspace data
+
+The product now starts with an **empty workspace**. No demo customers, invoices, bills, products, suppliers, payments, bank balances or company metrics are bundled into the browser application.
+
+Users populate the workspace by:
+
+- CSV import
+- manual data entry
+- JSON import/export
+- future live integrations
+
+Manual workspace data persists in browser `localStorage`.
+
+## Reference fixtures
+
+Automated calculation tests still require deterministic source examples. Those reference datasets live under `scripts/fixtures/reference/` and are test-only; they are not imported by the Vite application or used to initialize a user workspace.
+
+The reference reconciliation remains:
 
 | KPI | Value |
 |---|---:|
@@ -51,23 +68,10 @@ Vercel can deploy this repository with the **Root Directory left blank / reposit
 
 ## Automated checks
 
-`npm test` runs:
+`npm test` runs reconciliation, rule/engine checks, CSV import tests, and dedicated Receivables, Payables, Cash Forecasting and Inventory tests. It also verifies that the runtime source contains no bundled demo workspace data.
 
-- reconciliation
-- Phase 1 rule tests
-- Phase 1 engine smoke test
-- Module 1 CSV import tests
-- Module 2 Receivables tests
-- Module 3 Payables tests
+## Scope notes
 
-## Data and persistence
-
-The current manual workspace persists in browser `localStorage`. QuickBooks and other live integrations are deferred to Module 7. Do not commit `.env.local`, `.vercel`, `node_modules`, or `dist`.
-
-## Receivables note
-
-The supplied source material does not include the complete universal seven-component PayScore transformation specification. The current all-customer PayScore model remains explicitly provisional until that specification is available.
-
-## Payables note
-
-Module 3 uses the canonical seed / Calculations Breakdown reference for active discount opportunities: 3 bills totaling $3,653. The supplied Expected AP worksheet also lists BILL-8851 as discounted, which conflicts with the canonical seed field `discount_available: 0`; the engine therefore does not invent that fourth active discount. Full AR→AP chained discount funding remains deferred to Module 6.
+- PayScore remains explicitly provisional until the complete universal seven-component transformation specification is supplied.
+- Inventory currently implements reorder rules, dead/stagnant stock detection and basic ABC classification. Seasonal logic and EOQ are not exposed in the current operating scope.
+- Cross-domain chaining is intentionally deferred to the next development step.

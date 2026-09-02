@@ -32,7 +32,7 @@ export default function PricingPage({ onNavigate }) {
             onClick={() => onNavigate('login')}
             className="inline-flex items-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] px-5 py-2.5 text-xs font-bold text-[#052e16] shadow-sm transition-all transform active:scale-95 cursor-pointer"
           >
-            View Demo
+            Open Workspace
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -251,10 +251,10 @@ export default function PricingPage({ onNavigate }) {
               <Lock className="size-3 text-[#84cc16]" /> Read-only by design
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              See the product before you pick a plan
+              Open a clean workspace before you pick a plan
             </h2>
             <p className="text-xs text-[#86a7a0]">
-              The demo is fully populated with sample distributor data — no signup, no connection required.
+              The workspace starts empty. Add your own data manually or by CSV; live integrations can be connected later.
             </p>
           </div>
 
@@ -262,7 +262,7 @@ export default function PricingPage({ onNavigate }) {
             onClick={() => onNavigate('login')}
             className="inline-flex items-center gap-2 shrink-0 rounded-full bg-[#84cc16] hover:bg-[#65a30d] px-6 py-3.5 text-xs font-bold text-[#052e16] shadow-lg transition-all transform active:scale-95 cursor-pointer"
           >
-            View Demo
+            Open Workspace
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -272,7 +272,7 @@ export default function PricingPage({ onNavigate }) {
       <footer className="border-t border-slate-200 bg-[#f8faf9] py-6 px-6 text-center text-[11px] text-[#64748b]">
         <div className="max-w-[1300px] mx-auto flex flex-wrap items-center justify-between gap-4">
           <p>© 2026 i2cashflow — Inventory to cashflow</p>
-          <p>Demo environment · sample data only</p>
+          <p>Manual workspace · bring your own data</p>
         </div>
       </footer>
     </div>

@@ -1,15 +1,10 @@
-import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { buildEngineInputs } from '../src/domain/dataAdapters.js';
 import { computeSystem4, DEFAULT_THRESHOLDS } from '../src/utils/decisionSystems.js';
 import { computeReceivablesModule, evaluateReceivablesRules, referencePayScore } from '../src/domain/receivables.js';
+import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
-const read=n=>JSON.parse(fs.readFileSync(new URL(`../src/data/seed/${n}`, import.meta.url),'utf8'));
-const workspace={
-  customers:read('customers.json'), suppliers:read('suppliers.json'), invoices:read('invoices.json'), invoiceLines:read('invoice_lines.json'),
-  bills:read('bills.json'), paymentsReceived:read('payments_received.json'), paymentsMade:read('payments_made.json'),
-  products:read('products.json'), bankAccounts:read('bank_accounts.json'), companyMetrics:read('company_metrics.json')
-};
+const workspace = loadReferenceWorkspace();
 const e=buildEngineInputs(workspace);
 const r=computeReceivablesModule(e.customers,e.invoices,DEFAULT_THRESHOLDS);
 const s4=computeSystem4(e.customers,e.invoices,e.bills,e.vendors,DEFAULT_THRESHOLDS);

@@ -41,7 +41,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           {/* Section 1: Financial & Capital Parameters */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
-              Financial & Capital Parameters (System 1, 3, 5)
+              Financial & Capital Parameters
             </h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -94,26 +94,32 @@ export default function SettingsModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Section 2: Inventory Parameters */}
+          {/* Inventory Parameters */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
-              Inventory & Replenishment Controls (System 2)
+              Inventory & Replenishment Controls
             </h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block font-semibold mb-1">Target Service Level</label>
-                <select
-                  value={thresholds.service_level_z}
-                  onChange={(e) => updateThreshold('service_level_z', e.target.value)}
-                  className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
-                >
-                  <option value={1.28}>90% Service Level (z = 1.28)</option>
-                  <option value={1.65}>95% Service Level (z = 1.65)</option>
-                  <option value={2.05}>98% Service Level (z = 2.05)</option>
-                </select>
-                <p className="mt-1 text-[11px] text-muted-foreground">Determines SKU Safety Stock buffer requirement.</p>
-              </div>
+              {[
+                ['service_level_z_a','Class A Service Level',2.05],
+                ['service_level_z_b','Class B Service Level',1.65],
+                ['service_level_z_c','Class C Service Level',1.28],
+              ].map(([key,label,fallback]) => (
+                <div key={key}>
+                  <label className="block font-semibold mb-1">{label}</label>
+                  <select
+                    value={thresholds[key] ?? fallback}
+                    onChange={(e) => updateThreshold(key, e.target.value)}
+                    className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
+                  >
+                    <option value={1.28}>90% Service Level (z = 1.28)</option>
+                    <option value={1.65}>95% Service Level (z = 1.65)</option>
+                    <option value={2.05}>98% Service Level (z = 2.05)</option>
+                  </select>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Safety-stock target for this ABC class.</p>
+                </div>
+              ))}
 
               <div>
                 <label className="block font-semibold mb-1">Stagnant Inventory Threshold (Days)</label>
@@ -123,19 +129,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                   onChange={(e) => updateThreshold('stagnant_days', e.target.value)}
                   className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">Days of quiet sales before SKU is classified as Dead Stock.</p>
-              </div>
-
-              <div>
-                <label className="block font-semibold mb-1">Inventory Carrying Cost (%)</label>
-                <input
-                  type="number"
-                  step="1"
-                  value={Math.round(thresholds.holding_cost_percent * 100)}
-                  onChange={(e) => updateThreshold('holding_cost_percent', Number(e.target.value) / 100)}
-                  className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
-                />
-                <p className="mt-1 text-[11px] text-muted-foreground">Annual holding cost rate used in EOQ optimization.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Days with no sales before a stocked SKU is flagged as stagnant inventory.</p>
               </div>
 
               <div>
@@ -147,7 +141,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                   onChange={(e) => updateThreshold('lgd_default', Number(e.target.value) / 100)}
                   className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">Default LGD for Expected Credit Loss provisioning (System 4).</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Default LGD used for Expected Credit Loss provisioning.</p>
               </div>
             </div>
           </div>

@@ -37,8 +37,8 @@ export default function DailyAttentionSection({ onOpenActionModal }) {
 
       <div className="grid gap-4 md:grid-cols-3">
         {displayItems.map((item) => (
-          <div 
-            key={item.id} 
+          <div
+            key={item.id}
             className={`card-surface p-5 flex flex-col justify-between hover:border-primary/40 transition-colors ${item.border}`}
           >
             <div>

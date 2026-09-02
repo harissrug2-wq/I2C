@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
-import DemoBanner from './components/DemoBanner';
+import WorkspaceBanner from './components/WorkspaceBanner';
 import { DataProvider, useData } from './context/DataContext';
 
 // Standalone Public Pages
@@ -30,8 +30,10 @@ import SuppliersPage from './pages/SuppliersPage';
 import MarginsPage from './pages/MarginsPage';
 import ReorderPage from './pages/ReorderPage';
 import ProductsPage from './pages/ProductsPage';
+import InventoryPage from './pages/InventoryPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import ManualDataPage from './pages/ManualDataPage';
+import EmptyWorkspaceState from './components/EmptyWorkspaceState';
 
 // Interactive Modals
 import AskAiModal from './components/AskAiModal';
@@ -40,9 +42,9 @@ import ActionDetailsModal from './components/ActionDetailsModal';
 import SettingsModal from './components/SettingsModal';
 
 function DashboardView({ onOpenActionModal, onOpenSettings }) {
-  const { user, asOfDate } = useData();
-  const nameStr = user?.name ? user.name.split(' ')[0] : 'Dana';
-  const companyStr = user?.company || 'Harbourline Distribution';
+  const { user, asOfDate, hasWorkspaceData } = useData();
+  const nameStr = user?.name?.trim() ? user.name.trim().split(' ')[0] : null;
+  const companyStr = user?.company?.trim() || 'Workspace';
   const dateLabel = new Date(`${asOfDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
@@ -54,7 +56,7 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
             {dateLabel} · {companyStr}
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Good morning, {nameStr}
+            {nameStr ? `Welcome, ${nameStr}` : 'Welcome to i2cashflow'}
           </h1>
           <p className="mt-2 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
             Your cash, receivables, payables and inventory are recalculated from the active workspace dataset.
@@ -74,20 +76,17 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
         </div>
       </div>
 
-      {/* KPI Metrics Cards Grid */}
-      <KpiMetricsGrid onOpenActionModal={onOpenActionModal} />
-
-      {/* Overnight Money At Risk Notice Banner */}
-      <AlertBanner onOpenActionModal={onOpenActionModal} />
-
-      {/* Cross-domain Intelligence Section */}
-      <CrossDomainAlerts onOpenActionModal={onOpenActionModal} />
-
-      {/* What Needs Your Attention Today Section */}
-      <DailyAttentionSection onOpenActionModal={onOpenActionModal} />
-
-      {/* AR & Inventory Health Breakdown Section */}
-      <HealthSummarySection onOpenActionModal={onOpenActionModal} />
+      {!hasWorkspaceData ? (
+        <EmptyWorkspaceState title="Your workspace is empty" detail="Import CSV files or add records manually to activate cash, receivables, payables and inventory intelligence." />
+      ) : (
+        <>
+          <KpiMetricsGrid onOpenActionModal={onOpenActionModal} />
+          <AlertBanner onOpenActionModal={onOpenActionModal} />
+          <CrossDomainAlerts onOpenActionModal={onOpenActionModal} />
+          <DailyAttentionSection onOpenActionModal={onOpenActionModal} />
+          <HealthSummarySection onOpenActionModal={onOpenActionModal} />
+        </>
+      )}
     </>
   );
 }
@@ -97,7 +96,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('landing');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
+
   // Modals state
   const [isAskAiOpen, setIsAskAiOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -166,8 +165,10 @@ function AppContent() {
         return <SuppliersPage onOpenActionModal={setSelectedAction} />;
       case 'margins':
         return <MarginsPage onOpenActionModal={setSelectedAction} />;
+      case 'inventory':
+        return <InventoryPage />;
       case 'reorder':
-        return <ReorderPage onOpenActionModal={setSelectedAction} />;
+        return <ReorderPage />;
       case 'products':
         return <ProductsPage onOpenActionModal={setSelectedAction} />;
       case 'connections':
@@ -203,7 +204,7 @@ function AppContent() {
           />
 
           {/* Workspace Status Banner */}
-          <DemoBanner />
+          <WorkspaceBanner />
 
           {/* Main Workspace Body */}
           <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
@@ -226,9 +227,9 @@ function AppContent() {
 
       {/* Interactive Modals */}
       <AskAiModal isOpen={isAskAiOpen} onClose={() => setIsAskAiOpen(false)} />
-      <SearchModal 
-        isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)} 
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
         onSelectResult={(item) => setSelectedAction({ title: item.name, details: item.info })}
       />
       <ActionDetailsModal actionData={selectedAction} onClose={() => setSelectedAction(null)} />

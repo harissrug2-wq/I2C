@@ -37,7 +37,7 @@ export default function ActionDetailsModal({ actionData, onClose }) {
               </div>
               <h4 className="text-base font-bold text-foreground">Action Successfully Scheduled & Executed</h4>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Action recorded in the local demo workspace. No external accounting system is connected.
+                Action recorded in the local workspace. No external accounting system is connected.
               </p>
               <div className="pt-2">
                 <button

@@ -1,22 +1,10 @@
-import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { buildEngineInputs } from '../src/domain/dataAdapters.js';
 import { computeCashForecastModule, collectionProbability } from '../src/domain/cashForecast.js';
 import { computeSystem4, DEFAULT_THRESHOLDS, evaluateRules, computeSystem1, computeSystem2, computeSystem5 } from '../src/utils/decisionSystems.js';
+import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
-const read = name => JSON.parse(fs.readFileSync(new URL(`../src/data/seed/${name}`, import.meta.url), 'utf8'));
-const workspace = {
-  customers: read('customers.json'),
-  suppliers: read('suppliers.json'),
-  invoices: read('invoices.json'),
-  invoiceLines: read('invoice_lines.json'),
-  bills: read('bills.json'),
-  paymentsReceived: read('payments_received.json'),
-  paymentsMade: read('payments_made.json'),
-  products: read('products.json'),
-  bankAccounts: read('bank_accounts.json'),
-  companyMetrics: read('company_metrics.json'),
-};
+const workspace = loadReferenceWorkspace();
 
 const engine = buildEngineInputs(workspace);
 const sys4 = computeSystem4(engine.customers, engine.invoices, engine.bills, engine.vendors, DEFAULT_THRESHOLDS);

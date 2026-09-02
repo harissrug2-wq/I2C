@@ -5,22 +5,13 @@ import {
   computeSystem1,
   DEFAULT_THRESHOLDS,
 } from '../src/utils/decisionSystems.js';
+import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
-const base = path.resolve('src/data/seed');
-
-const read = (name) =>
-  JSON.parse(fs.readFileSync(path.join(base, name), 'utf8'));
-
-const customers = read('customers.json');
-const suppliers = read('suppliers.json');
-const invoices = read('invoices.json');
-const lines = read('invoice_lines.json');
-const bills = read('bills.json');
-const recv = read('payments_received.json');
-const made = read('payments_made.json');
-const products = read('products.json');
-const banks = read('bank_accounts.json');
-const metrics = read('company_metrics.json');
+const referenceWorkspace = loadReferenceWorkspace();
+const {
+  customers, suppliers, invoices, invoiceLines: lines, bills,
+  paymentsReceived: recv, paymentsMade: made, products, bankAccounts: banks, companyMetrics: metrics,
+} = referenceWorkspace;
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -170,7 +161,7 @@ Object.entries(lineTotals).forEach(([invoiceNo, lineTotal]) => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* Canonical seed totals                                                      */
+/* Canonical reference totals                                                      */
 /* -------------------------------------------------------------------------- */
 
 const cash = banks.reduce(

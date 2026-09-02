@@ -141,7 +141,7 @@ function deliveredInventoryByCustomer(workspace) {
 }
 
 export function buildEngineInputs(workspace) {
-  const asOfDate = workspace.companyMetrics?.as_of_date || '2026-08-15';
+  const asOfDate = workspace.companyMetrics?.as_of_date || new Date().toISOString().slice(0, 10);
   const customerById = new Map(workspace.customers.map(c => [c.id, c]));
   const supplierById = new Map(workspace.suppliers.map(s => [s.id, s]));
   const receiptAllocations = {};
@@ -215,6 +215,7 @@ export function buildEngineInputs(workspace) {
     supplierId: p.supplier_id,
     vendorName: supplierById.get(p.supplier_id)?.name || p.supplier_id,
     onHand: Number(p.on_hand || 0),
+    averageOnHand: p.average_on_hand == null || p.average_on_hand === '' ? null : Number(p.average_on_hand),
     wac: Number(p.wac || 0),
     sellPrice: Number(p.sell_price || p.wac || 0),
     sales60d: Number(p.sales_60d || 0),

@@ -50,7 +50,7 @@ export default function AlertsPage({ onOpenActionModal }) {
 
       <div className="space-y-3">
         {filtered.map(alert => (
-          <div 
+          <div
             key={alert.id}
             className={`card-surface p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/40 transition-all ${
               alert.priority === 'CRITICAL' ? 'border-l-4 border-l-[#ef4444]' :

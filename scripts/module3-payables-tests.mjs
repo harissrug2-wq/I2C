@@ -1,22 +1,10 @@
-import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { buildEngineInputs } from '../src/domain/dataAdapters.js';
 import { computePayablesModule, discountAPR, evaluatePayablesRules } from '../src/domain/payables.js';
 import { DEFAULT_THRESHOLDS } from '../src/utils/decisionSystems.js';
+import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
-const read = name => JSON.parse(fs.readFileSync(new URL(`../src/data/seed/${name}`, import.meta.url), 'utf8'));
-const workspace = {
-  customers: read('customers.json'),
-  suppliers: read('suppliers.json'),
-  invoices: read('invoices.json'),
-  invoiceLines: read('invoice_lines.json'),
-  bills: read('bills.json'),
-  paymentsReceived: read('payments_received.json'),
-  paymentsMade: read('payments_made.json'),
-  products: read('products.json'),
-  bankAccounts: read('bank_accounts.json'),
-  companyMetrics: read('company_metrics.json'),
-};
+const workspace = loadReferenceWorkspace();
 
 const engine = buildEngineInputs(workspace);
 const ap = computePayablesModule(engine.bills, engine.vendors, engine.cashBalance, DEFAULT_THRESHOLDS);
@@ -51,7 +39,7 @@ for (const supplier of ap.suppliers) {
 assert.equal(ap.highestExposureSupplier.name, 'Meridian Pipe Works');
 assert.equal(ap.highestExposureSupplier.apBalance, 214600);
 
-// Canonical seed + Calculations Breakdown active discount reference: 3 bills, $3,653.
+// Canonical reference fixture + Calculations Breakdown active discount reference: 3 bills, $3,653.
 assert.equal(ap.discountOpportunities.length, 3);
 assert.equal(ap.totalDiscountSavings, 3653);
 assert.deepEqual(ap.discountOpportunities.map(b => b.billNo).sort(), ['BILL-8801', 'BILL-8820', 'BILL-8850']);

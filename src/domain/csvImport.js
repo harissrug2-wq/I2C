@@ -57,7 +57,7 @@ const DATASETS = {
     filenames: ['products','product','inventory','inventory_master','items'],
     key: row => row.sku,
     required: ['sku','name','supplier_id','wac','on_hand'],
-    numbers: ['wac','reorder_point','safety_stock','on_hand','sell_price','sales_60d','annual_sales','lead_time_days','lead_time_stddev','days_quiet'],
+    numbers: ['wac','reorder_point','safety_stock','on_hand','average_on_hand','sell_price','sales_60d','annual_sales','lead_time_days','lead_time_stddev','days_quiet'],
     aliases: { product_sku:'sku', item:'sku', item_name:'name', vendor_id:'supplier_id', vendor:'supplier_id', qty_on_hand:'on_hand', quantity_on_hand:'on_hand', unit_cost:'wac', price:'sell_price' },
   },
   bankAccounts: {
@@ -309,7 +309,7 @@ export function datasetTemplate(dataset) {
     bills:['bill_no','supplier_id','bill_date','due_date','terms','total','balance_due','status','discount_available'],
     paymentsReceived:['receipt_no','customer_id','payment_date','method','amount','invoice_no','applied_amount'],
     paymentsMade:['payment_no','supplier_id','payment_date','method','amount_paid','discount_taken','applied_to_bill'],
-    products:['sku','name','category','supplier_id','uom','wac','reorder_point','safety_stock','on_hand','warehouse','sell_price','sales_60d','annual_sales','lead_time_days','lead_time_stddev','days_quiet'],
+    products:['sku','name','category','supplier_id','uom','wac','reorder_point','safety_stock','on_hand','average_on_hand','warehouse','sell_price','sales_60d','annual_sales','lead_time_days','lead_time_stddev','days_quiet'],
     bankAccounts:['account_id','account_code','name','type','institution','balance'],
     companyMetrics:['as_of_date','revenue_last_30_days','cogs_last_30_days','operating_expenses_last_30_days','other_expenses_last_30_days','other_current_liabilities','forecast_baseline_other_outflows_60d','forecast_baseline_other_inflows_60d','monthly_payroll'],
   }[dataset];

@@ -22,6 +22,9 @@ export const DEFAULT_THRESHOLDS = {
   target_ccc: 45,
   operating_cash_floor: 250000,
   service_level_z: 1.65,
+  service_level_z_a: 2.05,
+  service_level_z_b: 1.65,
+  service_level_z_c: 1.28,
   holding_cost_percent: 0.20,
   ordering_cost_per_order: 150,
   lgd_default: 0.85,
@@ -124,8 +127,9 @@ export function computeSystem1(cash, invoiceList, productList, billList, metrics
   const annualizedRevenue = revenuePeriod > 0 ? revenuePeriod * (365 / periodDays) : 0;
   const wcRevenueRatio = annualizedRevenue > 0 ? workingCapital / annualizedRevenue : 0;
   const wcTurnover = workingCapital > 0 ? annualizedRevenue / workingCapital : 0;
-  const currentRatio = currentLiabilities > 0 ? currentAssets / currentLiabilities : Infinity;
-  const quickRatio = currentLiabilities > 0 ? (Number(cash || 0) + totalAR) / currentLiabilities : Infinity;
+  const currentRatio = currentLiabilities > 0 ? currentAssets / currentLiabilities : (currentAssets > 0 ? Infinity : 0);
+  const quickAssets = Number(cash || 0) + totalAR;
+  const quickRatio = currentLiabilities > 0 ? quickAssets / currentLiabilities : (quickAssets > 0 ? Infinity : 0);
   const cashFreed = ccc > Number(thresholds.target_ccc || 0) && annualizedRevenue > 0
     ? ((ccc - Number(thresholds.target_ccc || 0)) / 365) * annualizedRevenue
     : 0;
@@ -142,6 +146,7 @@ export function computeSystem1(cash, invoiceList, productList, billList, metrics
     workingCapital: money(workingCapital), annualizedRevenue: money(annualizedRevenue), wcRevenueRatio: round2(wcRevenueRatio),
     wcTurnover: round1(wcTurnover), currentRatio: Number.isFinite(currentRatio) ? round2(currentRatio) : 99,
     quickRatio: Number.isFinite(quickRatio) ? round2(quickRatio) : 99, cashFreed: money(cashFreed),
+    hasLiquidityData: currentAssets > 0 || currentLiabilities > 0,
     periodDays, dataSource: metrics.periodSource || 'workspace',
     history, cccHistory, wcRatioHistory, baselineReady,
     custBaselineCCC: baselineReady ? round1(cccHistory.reduce((s, n) => s + n, 0) / cccHistory.length) : null,
@@ -150,70 +155,169 @@ export function computeSystem1(cash, invoiceList, productList, billList, metrics
 }
 
 export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
-  const stockProducts = productList.filter(p => p.category !== 'Non-stock');
-  const sortedByValue = [...stockProducts].map(p => ({ ...p, annualValue: Number(p.annualSales || 0) * Number(p.sellPrice || 0) }))
-    .sort((a, b) => b.annualValue - a.annualValue);
-  const totalAnnualValue = sortedByValue.reduce((sum, p) => sum + p.annualValue, 0);
-  let cumulative = 0;
+  const products = Array.isArray(productList) ? productList : [];
+  const stockProducts = products.filter(p => p.category !== 'Non-stock');
+
+  // Basic ABC for the current operating scope: rank by trailing annual revenue,
+  // then split by SKU rank (top ~20%, next ~30%, remaining ~50%). If annual
+  // revenue is unavailable, classification remains honest rather than invented.
+  const ranked = [...stockProducts]
+    .map(p => ({ ...p, annualRevenue: Number(p.annualSales || 0) * Number(p.sellPrice || 0) }))
+    .sort((a, b) => b.annualRevenue - a.annualRevenue);
+  const hasAbcData = ranked.some(p => p.annualRevenue > 0);
   const abcMap = {};
-  sortedByValue.forEach(p => {
-    cumulative += p.annualValue;
-    const share = cumulative / (totalAnnualValue || 1);
-    abcMap[p.sku] = share <= 0.80 ? 'A' : share <= 0.95 ? 'B' : 'C';
+  ranked.forEach((p, index) => {
+    if (!hasAbcData) {
+      abcMap[p.sku] = 'Unclassified';
+      return;
+    }
+    const rankShare = index / Math.max(1, ranked.length);
+    abcMap[p.sku] = rankShare < 0.20 ? 'A' : rankShare < 0.50 ? 'B' : 'C';
   });
 
   const inventoryValues = stockProducts.map(p => Number(p.onHand || 0) * Number(p.wac || 0));
   const wkspMedianInventoryValue = median(inventoryValues);
   const stagnantDays = Number(thresholds.stagnant_days ?? phase1Config.rules['INV-011'].stagnantDays);
+  const classServiceZ = {
+    A: Number(thresholds.service_level_z_a ?? 2.05),
+    B: Number(thresholds.service_level_z_b ?? 1.65),
+    C: Number(thresholds.service_level_z_c ?? 1.28),
+    Unclassified: Number(thresholds.service_level_z ?? 1.65),
+  };
+  const serviceLevelLabel = { A:'98%', B:'95%', C:'90%', Unclassified:'95%' };
 
-  const processedSKUs = productList.map(p => {
-    const velocityDaily = Number(p.sales60d || 0) / 60;
+  const processedSKUs = products.map(p => {
+    const onHand = Number(p.onHand || 0);
+    const wac = Number(p.wac || 0);
+    const sales60d = Number(p.sales60d || 0);
+    const annualSales = Number(p.annualSales || 0);
+    const leadTimeDays = Number(p.leadTimeDays || 0);
+    const leadTimeStdDev = Number(p.leadTimeStdDev || 0);
+    const abcClass = p.category === 'Non-stock' ? 'N/A' : (abcMap[p.sku] || 'Unclassified');
+    const velocityDaily = sales60d / 60;
     const velocityWeekly = velocityDaily * 7;
     const velocityMonthly = velocityDaily * 30;
-    const daysOfStock = velocityDaily > 0 ? Number(p.onHand || 0) / velocityDaily : (Number(p.onHand || 0) > 0 ? Infinity : 0);
+    const daysOfStockRaw = velocityDaily > 0 ? onHand / velocityDaily : (onHand > 0 ? Infinity : 0);
+    const z = classServiceZ[abcClass] ?? Number(thresholds.service_level_z || 1.65);
     const safetyStock = velocityDaily > 0
-      ? velocityDaily * Number(p.leadTimeStdDev || 0) * Number(thresholds.service_level_z || 1.65)
+      ? velocityDaily * leadTimeStdDev * z
       : Number(p.manualSafetyStock || 0);
-    const reorderPoint = velocityDaily > 0
-      ? velocityDaily * Number(p.leadTimeDays || 0) + safetyStock
+    const reorderPoint = velocityDaily > 0 && leadTimeDays > 0
+      ? velocityDaily * leadTimeDays + safetyStock
       : Number(p.manualReorderPoint || 0);
-    // Spec calls for average_on_hand. Current seed has current on-hand only; retain
-    // the proxy but expose it so confidence can be reduced instead of hiding it.
-    const turnoverAnnual = Number(p.onHand || 0) > 0 ? Number(p.annualSales || 0) / Number(p.onHand || 0) : 0;
-    const H = Number(p.wac || 0) * Number(thresholds.holding_cost_percent || 0.20);
-    const eoq = H > 0 && Number(p.annualSales || 0) > 0
-      ? Math.sqrt((2 * Number(p.annualSales) * Number(thresholds.ordering_cost_per_order || 150)) / H)
-      : 0;
-    const inventoryValue = Number(p.onHand || 0) * Number(p.wac || 0);
+    const averageOnHandAvailable = Number.isFinite(Number(p.averageOnHand)) && Number(p.averageOnHand) > 0;
+    const averageOnHand = averageOnHandAvailable ? Number(p.averageOnHand) : onHand;
+    const turnoverAnnual = averageOnHand > 0 ? annualSales / averageOnHand : 0;
+    const inventoryValue = onHand * wac;
+    const annualRevenue = annualSales * Number(p.sellPrice || 0);
+
+    let stockoutRisk = 'NONE';
+    if (velocityDaily > 0 && leadTimeDays > 0) {
+      if (daysOfStockRaw < leadTimeDays) stockoutRisk = 'HIGH';
+      else if (daysOfStockRaw < leadTimeDays * 1.5) stockoutRisk = 'MEDIUM';
+      else if (daysOfStockRaw < leadTimeDays * 2) stockoutRisk = 'LOW';
+    }
+
+    const minimumReorderUnits = Math.max(0, Math.ceil(reorderPoint - onHand));
+    const stagnant = Number(p.daysQuiet || 0) >= stagnantDays && onHand > 0;
+    const overstocked = annualSales > 0 && onHand > annualSales;
+    const slowMoving = turnoverAnnual < 2 && abcClass === 'C' && onHand > 0;
 
     let status = 'Healthy';
     if (p.category === 'Non-stock') status = 'Non-stock';
-    else if (Number(p.daysQuiet || 0) >= stagnantDays && Number(p.onHand || 0) > 0) status = 'Dead Stock';
-    else if (Number(p.onHand || 0) > Number(p.annualSales || 0) && Number(p.annualSales || 0) > 0) status = 'Overstocked';
+    else if (stagnant) status = 'Dead Stock';
+    else if (overstocked) status = 'Overstocked';
+    else if (slowMoving) status = 'Slow Moving';
+    else if (stockoutRisk !== 'NONE' || (abcClass === 'A' && onHand < reorderPoint)) status = 'Reorder';
+
+    const completenessFlags = [
+      Number.isFinite(onHand),
+      wac > 0,
+      sales60d >= 0,
+      annualSales >= 0,
+      leadTimeDays > 0,
+      leadTimeStdDev >= 0,
+    ];
 
     return {
       ...p,
-      velocityDaily: round2(velocityDaily), velocityWeekly: round2(velocityWeekly), velocityMonthly: round2(velocityMonthly),
-      daysOfStock: Number.isFinite(daysOfStock) ? round1(daysOfStock) : 9999,
-      safetyStock: Math.ceil(safetyStock), reorderPoint: Math.ceil(reorderPoint), turnoverAnnual: round2(turnoverAnnual),
-      turnoverUsesCurrentOnHandProxy: true, abcClass: abcMap[p.sku] || 'C', eoq: Math.round(eoq), status,
-      stockoutDays: Number.isFinite(daysOfStock) ? Math.max(0, Math.round(daysOfStock)) : 9999,
-      inventoryValue: money(inventoryValue), wkspMedianInventoryValue: money(wkspMedianInventoryValue),
+      onHand,
+      wac,
+      sales60d,
+      annualSales,
+      leadTimeDays,
+      leadTimeStdDev,
+      velocityDaily: round2(velocityDaily),
+      velocityWeekly: round2(velocityWeekly),
+      velocityMonthly: round2(velocityMonthly),
+      daysOfStock: Number.isFinite(daysOfStockRaw) ? round1(daysOfStockRaw) : 9999,
+      daysOfStockInfinite: !Number.isFinite(daysOfStockRaw),
+      safetyStock: Math.ceil(safetyStock),
+      reorderPoint: Math.ceil(reorderPoint),
+      minimumReorderUnits,
+      turnoverAnnual: round2(turnoverAnnual),
+      averageOnHand: round2(averageOnHand),
+      turnoverUsesCurrentOnHandProxy: !averageOnHandAvailable,
+      abcClass,
+      annualRevenue: money(annualRevenue),
+      serviceLevelTarget: serviceLevelLabel[abcClass] || '95%',
+      serviceLevelZ: z,
+      status,
+      stockoutRisk,
+      stockoutDays: Number.isFinite(daysOfStockRaw) ? Math.max(0, Math.round(daysOfStockRaw)) : 9999,
+      inventoryValue: money(inventoryValue),
+      wkspMedianInventoryValue: money(wkspMedianInventoryValue),
+      dataConfidence: confidenceFromAvailability(completenessFlags.filter(Boolean).length, completenessFlags.length, averageOnHandAvailable ? 5 : 0),
     };
   });
 
   const inventorySKUs = processedSKUs.filter(p => p.status !== 'Non-stock');
-  const healthyValue = inventorySKUs.filter(p => p.status === 'Healthy').reduce((s, p) => s + p.inventoryValue, 0);
-  const overstockedValue = inventorySKUs.filter(p => p.status === 'Overstocked').reduce((s, p) => s + p.inventoryValue, 0);
-  const deadStockValue = inventorySKUs.filter(p => p.status === 'Dead Stock').reduce((s, p) => s + p.inventoryValue, 0);
   const totalValue = inventorySKUs.reduce((s, p) => s + p.inventoryValue, 0);
+  const deadStockValue = inventorySKUs.filter(p => p.status === 'Dead Stock').reduce((s, p) => s + p.inventoryValue, 0);
+  const overstockedValue = inventorySKUs.filter(p => p.status === 'Overstocked').reduce((s, p) => s + p.inventoryValue, 0);
+  const slowMovingValue = inventorySKUs.filter(p => p.status === 'Slow Moving').reduce((s, p) => s + p.inventoryValue, 0);
+  const healthyValue = Math.max(0, totalValue - deadStockValue - overstockedValue - slowMovingValue);
+  const riskRank = { HIGH:3, MEDIUM:2, LOW:1, NONE:0 };
+  const classRank = { A:3, B:2, C:1, Unclassified:0 };
+  const reorderCandidates = inventorySKUs
+    .filter(p => p.stockoutRisk !== 'NONE' || (p.abcClass === 'A' && p.onHand < p.reorderPoint))
+    .sort((a,b) => (riskRank[b.stockoutRisk]-riskRank[a.stockoutRisk]) || (classRank[b.abcClass]-classRank[a.abcClass]) || (a.daysOfStock-b.daysOfStock));
+  const deadStockCandidates = inventorySKUs
+    .filter(p => p.status === 'Dead Stock' || p.turnoverAnnual < 1)
+    .sort((a,b) => b.inventoryValue-a.inventoryValue);
+  const slowMovingCandidates = inventorySKUs
+    .filter(p => p.status === 'Slow Moving')
+    .sort((a,b) => b.inventoryValue-a.inventoryValue);
+
+  const abcSummary = ['A','B','C','Unclassified'].map(abcClass => {
+    const rows = inventorySKUs.filter(p => p.abcClass === abcClass);
+    return {
+      abcClass,
+      skuCount: rows.length,
+      inventoryValue: rows.reduce((s,p)=>s+p.inventoryValue,0),
+      annualRevenue: rows.reduce((s,p)=>s+p.annualRevenue,0),
+    };
+  }).filter(row => row.skuCount > 0);
 
   return {
-    skus: processedSKUs, stockSkuCount: inventorySKUs.length, totalValue, healthyValue, overstockedValue, deadStockValue,
+    skus: processedSKUs,
+    stockSkuCount: inventorySKUs.length,
+    totalValue,
+    healthyValue,
+    overstockedValue,
+    deadStockValue,
+    slowMovingValue,
     healthyPercent: Math.round((healthyValue / (totalValue || 1)) * 100),
     overstockedPercent: Math.round((overstockedValue / (totalValue || 1)) * 100),
     deadStockPercent: Math.round((deadStockValue / (totalValue || 1)) * 100),
+    slowMovingPercent: Math.round((slowMovingValue / (totalValue || 1)) * 100),
     wkspMedianInventoryValue: money(wkspMedianInventoryValue),
+    reorderCandidates,
+    deadStockCandidates,
+    slowMovingCandidates,
+    reorderAlertCount: reorderCandidates.length,
+    abcSummary,
+    abcReady: hasAbcData,
   };
 }
 
@@ -338,9 +442,9 @@ export function evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds = DEFAULT
     const prior = Number(sys1.cccHistory.at(-1));
     if (prior > 0 && (sys1.ccc - prior) / prior > Number(thresholds.wcm_mom_deterioration_pct ?? config['WCM-004'].momDeteriorationPct)) out.push(advisory({ id:'WCM-004', system:'Overall WCM', domain:'WCM', priority:'CRITICAL', finding:'CCC deteriorated materially month over month.', reason:`CCC moved from ${round1(prior)} to ${sys1.ccc} days.`, risk:'A sudden working-capital deterioration can create a near-term liquidity shock.', recommendedAction:'Run an immediate root-cause review across inventory, collections and supplier terms.', contributors:[`Prior CCC ${round1(prior)}`,`Current CCC ${sys1.ccc}`,`Change ${round1((sys1.ccc-prior)/prior*100)}%`], confidence:confidenceFromAvailability(sys1.cccHistory.length, 12, 10) }));
   }
-  if (sys1.currentRatio < Number(thresholds.current_ratio_min ?? config['WCM-010'].currentRatioMin)) out.push(advisory({ id:'WCM-010', system:'Overall WCM', domain:'Liquidity', priority:'HIGH', finding:`Current ratio is ${sys1.currentRatio}.`, reason:'Current assets are low relative to current liabilities.', risk:'Short-term obligations may exceed the business’s ability to pay.', recommendedAction:'Protect cash, accelerate collections and review near-term liabilities.', contributors:[`Current assets $${sys1.currentAssets.toLocaleString()}`,`Current liabilities $${sys1.currentLiabilities.toLocaleString()}`,`Current ratio ${sys1.currentRatio}`], confidence:88 }));
-  if (sys1.quickRatio < Number(thresholds.quick_ratio_min ?? config['WCM-011'].quickRatioMin)) out.push(advisory({ id:'WCM-011', system:'Overall WCM', domain:'Liquidity', priority:'HIGH', finding:`Quick ratio is ${sys1.quickRatio}.`, reason:'Cash plus receivables are low relative to current liabilities.', risk:'Liquidity may be insufficient if inventory cannot be converted quickly.', recommendedAction:'Increase liquid reserves or reduce near-term liability pressure.', contributors:[`Cash + AR $${(sys1.totalAR + (sys1.currentAssets-sys1.totalAR-sys1.inventoryValue)).toLocaleString()}`,`Current liabilities $${sys1.currentLiabilities.toLocaleString()}`,`Quick ratio ${sys1.quickRatio}`], confidence:88 }));
-  if (sys1.workingCapital < 0) out.push(advisory({ id:'WCM-012', system:'Overall WCM', domain:'Liquidity', priority:'CRITICAL', finding:`Working capital is negative at $${sys1.workingCapital.toLocaleString()}.`, reason:'Current liabilities exceed current assets.', risk:'The business is technically insolvent on a short-term working-capital basis.', recommendedAction:'Escalate immediate liquidity actions and financing review.', contributors:[`Working capital $${sys1.workingCapital.toLocaleString()}`,`Assets $${sys1.currentAssets.toLocaleString()}`,`Liabilities $${sys1.currentLiabilities.toLocaleString()}`], confidence:92 }));
+  if (sys1.hasLiquidityData !== false && sys1.currentRatio < Number(thresholds.current_ratio_min ?? config['WCM-010'].currentRatioMin)) out.push(advisory({ id:'WCM-010', system:'Overall WCM', domain:'Liquidity', priority:'HIGH', finding:`Current ratio is ${sys1.currentRatio}.`, reason:'Current assets are low relative to current liabilities.', risk:'Short-term obligations may exceed the business’s ability to pay.', recommendedAction:'Protect cash, accelerate collections and review near-term liabilities.', contributors:[`Current assets $${sys1.currentAssets.toLocaleString()}`,`Current liabilities $${sys1.currentLiabilities.toLocaleString()}`,`Current ratio ${sys1.currentRatio}`], confidence:88 }));
+  if (sys1.hasLiquidityData !== false && sys1.quickRatio < Number(thresholds.quick_ratio_min ?? config['WCM-011'].quickRatioMin)) out.push(advisory({ id:'WCM-011', system:'Overall WCM', domain:'Liquidity', priority:'HIGH', finding:`Quick ratio is ${sys1.quickRatio}.`, reason:'Cash plus receivables are low relative to current liabilities.', risk:'Liquidity may be insufficient if inventory cannot be converted quickly.', recommendedAction:'Increase liquid reserves or reduce near-term liability pressure.', contributors:[`Cash + AR $${(sys1.totalAR + (sys1.currentAssets-sys1.totalAR-sys1.inventoryValue)).toLocaleString()}`,`Current liabilities $${sys1.currentLiabilities.toLocaleString()}`,`Quick ratio ${sys1.quickRatio}`], confidence:88 }));
+  if (sys1.hasLiquidityData !== false && sys1.workingCapital < 0) out.push(advisory({ id:'WCM-012', system:'Overall WCM', domain:'Liquidity', priority:'CRITICAL', finding:`Working capital is negative at $${sys1.workingCapital.toLocaleString()}.`, reason:'Current liabilities exceed current assets.', risk:'The business is technically insolvent on a short-term working-capital basis.', recommendedAction:'Escalate immediate liquidity actions and financing review.', contributors:[`Working capital $${sys1.workingCapital.toLocaleString()}`,`Assets $${sys1.currentAssets.toLocaleString()}`,`Liabilities $${sys1.currentLiabilities.toLocaleString()}`], confidence:92 }));
   if (sys1.custBaselineWcRevenueRatio != null && sys1.wcRevenueRatio > sys1.custBaselineWcRevenueRatio * Number(thresholds.wc_revenue_baseline_multiplier ?? config['WCM-013'].baselineMultiplier)) out.push(advisory({ id:'WCM-013', system:'Overall WCM', domain:'WCM', priority:'MEDIUM', finding:'Working capital is high relative to revenue versus the customer baseline.', reason:`WC/Revenue is ${round2(sys1.wcRevenueRatio)} versus baseline ${round2(sys1.custBaselineWcRevenueRatio)}.`, risk:'Cash may be trapped in receivables or inventory instead of funding growth.', recommendedAction:'Identify the working-capital component with excess investment.', contributors:[`WC/Revenue ${round2(sys1.wcRevenueRatio)}`,`Baseline ${round2(sys1.custBaselineWcRevenueRatio)}`,`Working capital $${sys1.workingCapital.toLocaleString()}`], confidence:confidenceFromAvailability(sys1.wcRatioHistory.length, 12, 10) }));
 
   // System 2 — reorder + dead stock + basic ABC.

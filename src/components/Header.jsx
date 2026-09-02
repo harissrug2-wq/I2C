@@ -14,7 +14,7 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onO
       </button>
 
       {/* Search Bar */}
-      <div 
+      <div
         onClick={onOpenSearch}
         className="relative hidden max-w-md flex-1 sm:block cursor-pointer"
       >
@@ -48,7 +48,7 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onO
         </span>
 
         {/* Notification Bell */}
-        <button 
+        <button
           onClick={onOpenAskAi}
           className="relative flex size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           title="Notifications"
@@ -58,7 +58,7 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onO
         </button>
 
         {/* Settings */}
-        <button 
+        <button
           onClick={onOpenSettings}
           className="flex size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           title="Rules & Thresholds Settings"
