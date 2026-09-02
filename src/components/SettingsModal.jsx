@@ -34,7 +34,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           <div className="rounded-xl bg-[#0d9488]/10 p-4 border border-[#0d9488]/20 flex items-start gap-3">
             <ShieldCheck className="size-5 text-[#0d9488] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Phase 1 calculation parameters update in real time. Workspace overrides persist locally in this build; durable backend configuration and audit persistence remain a production hardening task.
+              Calculation parameters update in real time. Workspace overrides persist locally in this build; durable backend configuration and audit persistence remain a production hardening task.
             </p>
           </div>
 
@@ -66,7 +66,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                   onChange={(e) => updateThreshold('cost_of_capital', Number(e.target.value) / 100)}
                   className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">Retained for later-phase financing/margin calculations; Phase 1 AP early-pay optimisation is intentionally deferred.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Retained for financing and margin calculations. Payables discount visibility is handled separately from chained funding optimisation.</p>
               </div>
 
               <div>

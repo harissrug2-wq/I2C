@@ -20,7 +20,7 @@ export default function PayablesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 3 · PAYABLES</p>
+          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">PAYABLES</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <Landmark className="size-6 text-[#0d9488]" /> Payables Control Center
           </h1>
@@ -88,7 +88,7 @@ export default function PayablesPage() {
           <div className="rounded-xl border border-[#16a34a]/20 bg-[#16a34a]/5 p-4 text-xs">
             <p className="font-semibold text-foreground">APR-qualified discount candidates</p>
             <p className="mt-1 text-muted-foreground">Current source-confirmed savings: <strong className="text-[#16a34a]">{money(ap.totalDiscountCandidateSavings)}</strong></p>
-            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Module 3 surfaces discount economics. AR→AP chained funding decisions remain deferred to Cross Domain Intelligence.</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Discount economics are shown here. Chained AR→AP funding decisions are handled in Cross Domain Intelligence.</p>
           </div>
         </section>
       </div>

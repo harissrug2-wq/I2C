@@ -307,6 +307,8 @@ export function buildEngineInputs(workspace) {
         otherCurrentLiabilities: Number(workspace.companyMetrics?.other_current_liabilities || 0),
         actualInflows60d, actualOutflows60d,
         monthlyPayroll: workspace.companyMetrics?.monthly_payroll == null ? null : Number(workspace.companyMetrics.monthly_payroll),
+        forecastBaselineOtherOutflows60d: Number(workspace.companyMetrics?.forecast_baseline_other_outflows_60d || 0),
+        forecastBaselineOtherInflows60d: Number(workspace.companyMetrics?.forecast_baseline_other_inflows_60d || 0),
         wcmHistory: Array.isArray(workspace.companyMetrics?.wcm_history) ? workspace.companyMetrics.wcm_history : [],
       };
     })()

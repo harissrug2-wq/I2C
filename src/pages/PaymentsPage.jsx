@@ -25,12 +25,12 @@ export default function PaymentsPage({ onOpenActionModal }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 3 · PAYABLES</p>
+          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">PAYABLES</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <CircleDollarSign className="size-6 text-[#0d9488]" /> Payment Priority Queue
           </h1>
           <p className="mt-1.5 max-w-3xl text-xs sm:text-sm text-muted-foreground">
-            Operational bill sequencing by overdue status, due date and source-confirmed discount economics. Full AR→AP chained optimization remains out of scope until Module 6.
+            Operational bill sequencing by overdue status, due date and source-confirmed discount economics. Chained AR→AP optimization is handled in Cross Domain Intelligence.
           </p>
         </div>
         <span className="rounded-full bg-[#16a34a]/10 px-3 py-1.5 text-xs font-bold text-[#16a34a] border border-[#16a34a]/20">
@@ -150,7 +150,7 @@ export default function PaymentsPage({ onOpenActionModal }) {
 
       <div className="rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground flex items-start gap-2">
         <Clock3 className="mt-0.5 size-4 shrink-0 text-[#0d9488]" />
-        <span><strong className="text-foreground">Module boundary:</strong> this page does not fund supplier discounts by accelerating a specific receivable. That chained decision belongs to Module 6 — Cross Domain Intelligence.</span>
+        <span><strong className="text-foreground">Scope:</strong> this page does not fund supplier discounts by accelerating a specific receivable. That chained decision belongs in Cross Domain Intelligence.</span>
       </div>
     </div>
   );

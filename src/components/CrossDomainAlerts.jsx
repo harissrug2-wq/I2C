@@ -8,8 +8,8 @@ export default function CrossDomainAlerts({onOpenActionModal}){
   if (!cards.length) return null;
   return <section className="mt-8">
     <header className="mb-4">
-      <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2"><Network className="size-5 text-[#0d9488]"/>Phase 1 concentration alerts</h2>
-      <p className="mt-1 text-xs sm:text-sm text-muted-foreground">Customer and vendor concentration findings from Decision System 5. Cross-domain chaining activates in Phase 2.</p>
+      <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2"><Network className="size-5 text-[#0d9488]"/>Concentration alerts</h2>
+      <p className="mt-1 text-xs sm:text-sm text-muted-foreground">Customer and vendor concentration findings from the active workspace. Chained multi-domain recommendations are handled in Cross Domain Intelligence.</p>
     </header>
     <div className="grid gap-4 xl:grid-cols-3">
       {cards.map(c=><article key={`${c.id}-${c.entityId||'workspace'}`} className="rounded-xl bg-card p-5 border border-border border-l-4 border-l-[#0d9488]">

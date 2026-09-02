@@ -9,9 +9,9 @@ export default function AtRiskPage({ onOpenActionModal }) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
+        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">RECEIVABLES</p>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2"><ShieldAlert className="size-6 text-[#ef4444]" /> Money at Risk (${(sys4.moneyAtRisk / 1000).toFixed(0)}K)</h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Receivable risk only: payment behaviour, aging and ECL. Inventory recovery signals are deferred to Module 6 Cross Domain Intelligence.</p>
+        <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Receivable risk only: payment behaviour, aging and ECL. Inventory-linked recovery signals are handled in Cross Domain Intelligence.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

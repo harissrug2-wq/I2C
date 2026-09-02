@@ -11,7 +11,7 @@ export default function CollectionsPage({ onOpenActionModal }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
+          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">RECEIVABLES</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <ListOrdered className="size-6 text-[#0d9488]" /> Collections Priority Queue
           </h1>

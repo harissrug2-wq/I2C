@@ -1,5 +1,6 @@
 import phase1Config from '../config/phase1RuleConfig.json' with { type: 'json' };
 import { computeReceivablesModule } from '../domain/receivables.js';
+import { computeCashForecastModule } from '../domain/cashForecast.js';
 import { evaluatePayablesRules } from '../domain/payables.js';
 
 /**
@@ -217,79 +218,7 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
 }
 
 export function computeSystem3(cashBalance, invoiceList, billList, metrics, asOfDate, thresholds = DEFAULT_THRESHOLDS) {
-  const openInvoices = invoiceList.filter(i => Number(i.balanceDue) > 0);
-  const openBills = billList.filter(b => Number(b.balanceDue) > 0);
-  const getCollectionProbability = score => score < 30 ? 0.95 : score <= 60 ? 0.80 : score <= 80 ? 0.55 : 0.25;
-  const horizonDays = 30; // Phase 1 scope. 60/90 days are Phase 2.
-  const factor = Number(thresholds.forecast_confidence_factor || 0.15);
-
-  const scheduledInvoices = openInvoices.map(inv => {
-    const expectedRaw = addDays(inv.dueDate, Math.max(0, Number(inv.customerAvgDaysLate || 0)));
-    const expectedPayDate = diffDays(asOfDate, expectedRaw) < 0 ? asOfDate : expectedRaw;
-    return { ...inv, expectedPayDate, collectionProbability: getCollectionProbability(Number(inv.riskScore || 0)) };
-  });
-  const scheduledBills = openBills.map(b => ({ ...b, projectedPayDate: diffDays(asOfDate, b.dueDate) < 0 ? asOfDate : b.dueDate }));
-
-  let runningCash = Number(cashBalance || 0);
-  let cumulativeInflows = 0, cumulativeOutflows = 0;
-  const points = [];
-  let lowPoint = { cash: runningCash, dayStr: parseDate(asOfDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }), daysOut: 0 };
-
-  for (let i = 0; i <= horizonDays; i++) {
-    const date = addDays(asOfDate, i);
-    const inflows = scheduledInvoices.filter(inv => inv.expectedPayDate === date)
-      .reduce((sum, inv) => sum + Number(inv.balanceDue || 0) * inv.collectionProbability, 0);
-    const outflows = scheduledBills.filter(b => b.projectedPayDate === date)
-      .reduce((sum, b) => sum + Number(b.balanceDue || 0), 0);
-    if (i > 0 || date === asOfDate) {
-      runningCash += inflows - outflows;
-      cumulativeInflows += inflows;
-      cumulativeOutflows += outflows;
-    }
-
-    // Design formula uses customer payment-timing standard deviation. Because
-    // "near d" and the compounding calibration are not numerically defined in
-    // the supplied document, we use a transparent 7-day proximity window and
-    // expose the calibrated factor as workspace configuration.
-    const uncertainty = scheduledInvoices
-      .filter(inv => Math.abs(diffDays(inv.expectedPayDate, date)) <= 7)
-      .reduce((sum, inv) => sum + Number(inv.balanceDue || 0) * (Number(inv.customerStdDevDaysLate || 0) / 30) * factor, 0);
-    const horizonWidening = 1 + (i / horizonDays) * 0.25;
-    const bandWidth = uncertainty * horizonWidening;
-    const cashVal = money(runningCash);
-    if (cashVal < lowPoint.cash) {
-      lowPoint = { cash: cashVal, dayStr: parseDate(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }), daysOut: i };
-    }
-    points.push({
-      date,
-      day: parseDate(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
-      cash: cashVal,
-      bandLow: money(runningCash - bandWidth), bandHigh: money(runningCash + bandWidth),
-      expectedInflow: money(inflows), expectedOutflow: money(outflows),
-    });
-  }
-
-  const actual60Inflows = Number(metrics.actualInflows60d || 0);
-  const actual60Outflows = Number(metrics.actualOutflows60d || 0);
-  const currentBurnRate = (actual60Outflows - actual60Inflows) / 60;
-  const burnRateDaily = currentBurnRate > 0 ? currentBurnRate : 0;
-  const runwayDays = burnRateDaily > 0 ? Math.floor(Number(cashBalance || 0) / burnRateDaily) : 9999;
-  const floorGap = Math.max(0, Number(thresholds.operating_cash_floor || 0) - lowPoint.cash);
-  const confidenceLowNegative = points.some(p => p.bandLow < 0);
-
-  return {
-    cashToday: money(cashBalance), points, horizonDays,
-    lowPointCash: lowPoint.cash, lowPointDay: lowPoint.dayStr, lowPointDaysOut: lowPoint.daysOut,
-    floorGap: money(floorGap), burnRateDaily: money(burnRateDaily), runwayDays,
-    inflow30d: money(cumulativeInflows), outflow30d: money(cumulativeOutflows),
-    confidenceLowNegative,
-    monthlyPayroll: metrics.monthlyPayroll == null ? null : money(metrics.monthlyPayroll),
-    scheduledInvoices, scheduledBills,
-    forecastConfidence: confidenceFromAvailability(
-      [scheduledInvoices.length > 0, scheduledBills.length > 0, scheduledInvoices.some(i => Number(i.customerStdDevDaysLate) > 0), Number.isFinite(actual60Inflows), Number.isFinite(actual60Outflows)].filter(Boolean).length,
-      5
-    ),
-  };
+  return computeCashForecastModule(cashBalance, invoiceList, billList, metrics, asOfDate, thresholds, 30);
 }
 
 function provisionalPayScore(customer, customerShare, medianInvoice) {
@@ -432,6 +361,7 @@ export function evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds = DEFAULT
   // System 3 — Phase 1 only: 30-day gap, runway, coverage. Peer CASH-022 deferred.
   const firstNegative = sys3.points.find(p => p.cash < 0);
   if (firstNegative) out.push(advisory({ id:'CASH-001', system:'Cash Controls', domain:'Cash', priority:'CRITICAL', finding:`Projected cash goes negative within ${sys3.horizonDays} days.`, reason:`The first negative point is ${firstNegative.day} at $${firstNegative.cash.toLocaleString()}.`, risk:'The business may be unable to meet scheduled commitments without intervention.', recommendedAction:'Accelerate collections, delay non-critical payables and arrange a backstop.', contributors:[`Cash today $${sys3.cashToday.toLocaleString()}`,`30d inflow $${sys3.inflow30d.toLocaleString()}`,`30d outflow $${sys3.outflow30d.toLocaleString()}`,`Low point $${sys3.lowPointCash.toLocaleString()}`], confidence:sys3.forecastConfidence }));
+  if (!firstNegative && sys3.firstDownsideNegative) out.push(advisory({ id:'CASH-004', system:'Cash Controls', domain:'Cash', priority:'MEDIUM', finding:'The downside confidence path goes negative even though the expected cash path remains positive.', reason:`The first downside-negative point is ${sys3.firstDownsideNegative.day} at $${sys3.firstDownsideNegative.bandLow.toLocaleString()}.`, risk:'Payment-timing uncertainty could create a cash gap even when the central forecast remains positive.', recommendedAction:'Build an additional liquidity buffer and prioritize near-term collections.', contributors:[`Expected cash $${sys3.firstDownsideNegative.cash.toLocaleString()}`,`Downside cash $${sys3.firstDownsideNegative.bandLow.toLocaleString()}`,`Forecast confidence ${sys3.forecastConfidence}%`], confidence:sys3.forecastConfidence }));
   if (sys3.burnRateDaily > 0) {
     if (sys3.runwayDays < Number(thresholds.runway_critical_days ?? 30)) out.push(advisory({ id:'CASH-010', system:'Cash Controls', domain:'Cash', priority:'CRITICAL', finding:`Cash runway is ${sys3.runwayDays} days.`, reason:`Current daily burn is approximately $${sys3.burnRateDaily.toLocaleString()}.`, risk:'Liquidity can be exhausted within roughly one month.', recommendedAction:'Take immediate financing or expense-reduction action.', contributors:[`Runway ${sys3.runwayDays} days`,`Daily burn $${sys3.burnRateDaily.toLocaleString()}`,`Cash $${sys3.cashToday.toLocaleString()}`], confidence:85 }));
     else if (sys3.runwayDays < Number(thresholds.runway_high_days ?? 60)) out.push(advisory({ id:'CASH-011', system:'Cash Controls', domain:'Cash', priority:'HIGH', finding:`Cash runway is ${sys3.runwayDays} days.`, reason:`The workspace is consuming cash at approximately $${sys3.burnRateDaily.toLocaleString()} per day.`, risk:'The business has a short financing window.', recommendedAction:'Arrange a credit facility within two weeks.', contributors:[`Runway ${sys3.runwayDays} days`,`Daily burn $${sys3.burnRateDaily.toLocaleString()}`], confidence:85 }));

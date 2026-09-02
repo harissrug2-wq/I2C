@@ -19,7 +19,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 2 · RECEIVABLES</p>
+        <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">RECEIVABLES</p>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2"><Users className="size-6 text-[#0d9488]" /> Customer Accounts ({sys4.creditManagement.length})</h1>
         <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">Customer-level AR, aging, payment history, PayScore, credit utilization and invoice ECL drill-down.</p>
       </div>

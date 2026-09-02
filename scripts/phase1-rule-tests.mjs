@@ -4,7 +4,7 @@ import { evaluateRules, DEFAULT_THRESHOLDS, PHASE1_RULE_IDS } from '../src/utils
 const base = () => ({
   sys1: { baselineReady:false, cccHistory:[], wcRatioHistory:[], ccc:40, dio:20,dso:20,dpo:0,currentRatio:2,quickRatio:1.5,workingCapital:100,currentAssets:1000,currentLiabilities:500,totalAR:200,inventoryValue:300,wcRevenueRatio:0.1,custBaselineCCC:null,custBaselineWcRevenueRatio:null },
   sys2: { skus:[], wkspMedianInventoryValue:1000 },
-  sys3: { points:[{cash:100}],horizonDays:30,cashToday:1000,inflow30d:1000,outflow30d:500,burnRateDaily:0,runwayDays:9999,monthlyPayroll:null,forecastConfidence:90,lowPointCash:100,lowPointDay:'Aug 15' },
+  sys3: { points:[{cash:100}],horizonDays:30,cashToday:1000,inflow30d:1000,outflow30d:500,burnRateDaily:0,runwayDays:9999,monthlyPayroll:null,forecastConfidence:90,lowPointCash:100,lowPointDay:'Aug 15',firstDownsideNegative:null },
   sys4: { collectionQueue:[],bills:[],vendors:[],arGrowth:null,revenueGrowth:null },
   sys5: { top1VendorShareRaw:0,top3VendorShareRaw:0,top1CustShareRaw:0,top3CustShareRaw:0,customerConcentrationYoYIncrease:null },
 });
@@ -37,6 +37,7 @@ has('INV-012',x=>x.sys2.skus=[{...skuBase,turnoverAnnual:1.5,abcClass:'C'}]);
 has('INV-013',x=>x.sys2.skus=[{...skuBase,onHand:600,annualSales:500}]);
 
 has('CASH-001',x=>x.sys3.points=[{cash:100},{cash:-1,day:'Sep 1'}]);
+has('CASH-004',x=>x.sys3.firstDownsideNegative={cash:50,bandLow:-10,day:'Sep 2'});
 has('CASH-010',x=>Object.assign(x.sys3,{burnRateDaily:10,runwayDays:20}));
 has('CASH-011',x=>Object.assign(x.sys3,{burnRateDaily:10,runwayDays:45}));
 has('CASH-012',x=>Object.assign(x.sys3,{burnRateDaily:10,runwayDays:75}));
@@ -61,5 +62,5 @@ has('CDC-001',x=>x.sys5.top1CustShareRaw=.31);
 has('CDC-002',x=>x.sys5.top3CustShareRaw=.61);
 has('CDC-003',x=>x.sys5.customerConcentrationYoYIncrease=.11);
 
-assert.equal(PHASE1_RULE_IDS.length,35,'Expected 35 Phase 1 configured rules');
+assert.equal(PHASE1_RULE_IDS.length,36,'Expected 36 configured rules');
 console.log(`✓ Phase 1 rule tests passed (${PHASE1_RULE_IDS.length} configured rules)`);

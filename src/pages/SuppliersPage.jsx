@@ -18,7 +18,7 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">MODULE 3 · PAYABLES</p>
+          <p className="mb-1 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">PAYABLES</p>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl flex items-center gap-2">
             <Building2 className="size-6 text-[#0d9488]" /> Suppliers ({ap.suppliers.length})
           </h1>
