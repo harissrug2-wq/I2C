@@ -3,7 +3,7 @@ import { Activity, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 export default function WorkspaceBanner() {
-  const { user, hasWorkspaceData } = useData();
+  const { user, hasWorkspaceData, saveStatus } = useData();
   const companyName = user?.company?.trim() || 'Workspace';
 
   return (
@@ -16,7 +16,7 @@ export default function WorkspaceBanner() {
       </div>
       <div className="flex items-center gap-1.5 text-[11px] text-[#a7f3d0]">
         <ShieldCheck className="size-3.5 text-[#bef264]" />
-        <span>Manual workspace · local browser persistence</span>
+        <span>{saveStatus === 'saving' ? 'Secure workspace · saving changes' : saveStatus === 'error' ? 'Secure workspace · save needs attention' : 'Secure workspace · account-isolated cloud storage'}</span>
       </div>
     </div>
   );

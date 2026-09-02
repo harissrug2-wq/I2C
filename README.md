@@ -75,3 +75,20 @@ The reference reconciliation remains:
 - PayScore remains explicitly provisional until the complete universal seven-component transformation specification is supplied.
 - Inventory currently implements reorder rules, dead/stagnant stock detection and basic ABC classification. Seasonal logic and EOQ are not exposed in the current operating scope.
 - Cross-domain chaining is intentionally deferred to the next development step.
+
+## Authentication and isolated workspaces
+
+The dashboard uses Supabase email/password authentication. Operational data is no longer stored in browser localStorage. Each authenticated user owns one workspace row, and `workspace_state` is protected with Postgres Row Level Security (`owner_id = auth.uid()`).
+
+### Required environment variables
+
+Copy `.env.example` to `.env.local` and set:
+
+```bash
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
+```
+
+Apply `supabase/migrations/202609030001_auth_isolated_workspaces.sql` to the Supabase project before testing sign-up. The migration creates the profile/workspace tables, RLS policies, and a signup trigger that provisions an empty workspace for every new account.
+
+For Vercel, add the same two variables in Project Settings → Environment Variables and redeploy. Add the production domain and local development URL to the Supabase Auth URL configuration so confirmation redirects are accepted.

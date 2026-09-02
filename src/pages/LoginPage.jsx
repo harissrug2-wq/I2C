@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowRight, Lock, TrendingUp, Users, DollarSign, Package, Bell, CheckCircle2 } from 'lucide-react';
-import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
-  const { loginUser } = useData();
+  const { signIn, signUp, isConfigured } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,23 +11,65 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+
+    if (!isConfigured) {
+      setError('Authentication is not configured yet. Add the Supabase environment variables first.');
+      return;
+    }
 
     if (!email || !password) {
       setError('Please enter both email and password.');
       return;
     }
 
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    if (isSignUp && (!name.trim() || !company.trim())) {
+      setError('Please enter your full name and company name.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      loginUser(email, name, company);
+    try {
+      if (isSignUp) {
+        const { data, error: signUpError } = await signUp({
+          email,
+          password,
+          fullName: name,
+          companyName: company,
+        });
+        if (signUpError) throw signUpError;
+
+        if (!data?.session) {
+          setSuccess('Account created. Check your email to confirm your address, then sign in.');
+          setIsSignUp(false);
+          setPassword('');
+          return;
+        }
+      } else {
+        const { error: signInError } = await signIn(email, password);
+        if (signInError) throw signInError;
+      }
+
       if (onLoginSuccess) onLoginSuccess();
       else onNavigate('dashboard');
-    }, 400);
+    } catch (err) {
+      const message = err?.message || 'Authentication failed.';
+      setError(message === 'Invalid login credentials'
+        ? 'No matching account was found for that email/password. Create an account first or check your credentials.'
+        : message);
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -52,7 +94,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             {/* Auth Mode Switcher Tabs */}
             <div className="flex items-center gap-2 rounded-2xl bg-slate-200/80 p-1">
               <button
-                onClick={() => { setIsSignUp(false); setError(''); }}
+                onClick={() => { setIsSignUp(false); setError(''); setSuccess(''); }}
                 className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
                   !isSignUp ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
@@ -60,24 +102,24 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 Sign In
               </button>
               <button
-                onClick={() => { setIsSignUp(true); setError(''); }}
+                onClick={() => { setIsSignUp(true); setError(''); setSuccess(''); }}
                 className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
                   isSignUp ? 'bg-white text-[#0f172a] shadow-xs' : 'text-[#64748b] hover:text-[#0f172a]'
                 }`}
               >
-                Create Workspace
+                Create Account
               </button>
             </div>
 
             {/* Title & Description */}
             <div className="space-y-2">
               <h1 className="text-3xl font-extrabold text-[#0f172a] tracking-tight">
-                {isSignUp ? 'Setup your workspace' : 'Enter your workspace'}
+                {isSignUp ? 'Create your i2C account' : 'Sign in to i2C'}
               </h1>
               <p className="text-xs text-[#64748b] leading-relaxed">
                 {isSignUp
-                  ? 'Start with an empty workspace, then add records manually or import CSV files. External integrations can be connected later.'
-                  : 'Access continuous receivables, payables, inventory velocity & cash horizon analytics.'
+                  ? 'Create a secure account with its own isolated workspace. Your business data is never shared with another i2C account.'
+                  : 'Only existing i2C accounts can sign in. If you do not have an account yet, create one first.'
                 }
               </p>
             </div>
@@ -86,13 +128,19 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             <div className="rounded-2xl bg-[#ecfccb] p-4 border border-[#bef264] flex items-start gap-3 text-xs text-[#3f6212] leading-relaxed">
               <Lock className="size-4 shrink-0 text-[#3f6212] mt-0.5" />
               <span>
-                <strong>Manual mode.</strong> Workspace data is stored in this browser and does not write to any external accounting or inventory system.
+                <strong>Account-isolated workspace.</strong> Your customers, invoices, bills, products and settings are stored against your authenticated account and protected by database row-level security.
               </span>
             </div>
 
             {error && (
               <div className="rounded-xl bg-red-50 p-3 border border-red-200 text-xs font-semibold text-red-700">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-xl bg-emerald-50 p-3 border border-emerald-200 text-xs font-semibold text-emerald-700">
+                {success}
               </div>
             )}
 
@@ -144,7 +192,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Minimum 8 characters"
+                  minLength={8}
                   className="w-full rounded-2xl bg-white px-4 py-3 border border-slate-200 text-xs text-[#0f172a] focus:outline-none focus:border-[#84cc16] shadow-2xs"
                 />
               </div>
@@ -154,7 +203,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 disabled={loading}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#84cc16] hover:bg-[#65a30d] py-3.5 px-6 text-xs font-bold text-[#052e16] shadow-md transition-all transform active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                {loading ? 'Authenticating Workspace…' : isSignUp ? 'Create & Launch Workspace' : 'Sign In to Workspace'}
+                {loading ? 'Please wait…' : isSignUp ? 'Create Account' : 'Sign In'}
                 <ArrowRight className="size-4" />
               </button>
             </form>
@@ -249,9 +298,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="size-8 rounded-lg bg-[#14532d] flex items-center justify-center text-[#84cc16]">
                   <Lock className="size-4" />
                 </div>
-                <h3 className="font-bold text-xs text-white">Read-only always</h3>
+                <h3 className="font-bold text-xs text-white">Secure account isolation</h3>
                 <p className="text-[11px] text-[#86a7a0] leading-relaxed">
-                  Manual workspace first. External connections are optional and currently disabled.
+                  Each account gets its own protected workspace. External connections can be added later without mixing account data.
                 </p>
               </div>
             </div>

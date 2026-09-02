@@ -203,7 +203,7 @@ function SidebarFooter({ setActiveTab }) {
           <Home className="size-3.5" /> Landing Page
         </button>
         <button
-          onClick={() => { logoutUser(); setActiveTab('login'); }}
+          onClick={async () => { await logoutUser(); setActiveTab('login'); }}
           className="flex items-center gap-1 hover:text-[#ef4444] transition-colors cursor-pointer"
         >
           <LogOut className="size-3.5" /> Sign Out

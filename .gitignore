@@ -12,3 +12,5 @@ dist/
 coverage/
 *.patch
 I2C-module*-checkpoint/
+.vercel
+.env*

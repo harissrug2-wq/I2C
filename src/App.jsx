@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import WorkspaceBanner from './components/WorkspaceBanner';
 import { DataProvider, useData } from './context/DataContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Standalone Public Pages
 import LandingPage from './pages/LandingPage';
@@ -92,7 +93,7 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
 }
 
 function AppContent() {
-  const { user, logoutUser } = useData();
+  const { user, logoutUser, authLoading, workspaceLoading, workspaceError } = useData();
   const [activeTab, setActiveTab] = useState('landing');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -120,6 +121,23 @@ function AppContent() {
     window.history.pushState(null, '', urlPath);
   };
 
+
+  useEffect(() => {
+    if (authLoading) return;
+    const publicTabs = ['landing', 'pricing', 'login'];
+
+    if (!user.isAuthenticated && !publicTabs.includes(activeTab)) {
+      setActiveTab('login');
+      window.history.replaceState(null, '', '/login');
+      return;
+    }
+
+    if (user.isAuthenticated && activeTab === 'login') {
+      setActiveTab('dashboard');
+      window.history.replaceState(null, '', '/dashboard');
+    }
+  }, [authLoading, user.isAuthenticated, activeTab]);
+
   const toggleSidebar = () => {
     if (window.innerWidth < 768) {
       setIsSidebarOpen(!isSidebarOpen);
@@ -139,6 +157,34 @@ function AppContent() {
 
   if (activeTab === 'login') {
     return <LoginPage onNavigate={handleTabChange} onLoginSuccess={() => handleTabChange('dashboard')} />;
+  }
+
+  if (!authLoading && !user.isAuthenticated) {
+    return <LoginPage onNavigate={handleTabChange} onLoginSuccess={() => handleTabChange('dashboard')} />;
+  }
+
+  if (authLoading || (user.isAuthenticated && workspaceLoading)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="card-surface max-w-sm w-full p-6 text-center">
+          <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-[#0d9488]/20 border-t-[#0d9488]" />
+          <p className="text-sm font-bold text-foreground">Loading your workspace</p>
+          <p className="mt-1 text-xs text-muted-foreground">Authenticating and loading only the data assigned to your account.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.isAuthenticated && workspaceError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="card-surface max-w-lg w-full p-6">
+          <h1 className="text-lg font-bold text-foreground">Unable to load your workspace</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{workspaceError}</p>
+          <button onClick={async () => { await logoutUser(); handleTabChange('login'); }} className="mt-4 rounded-lg bg-[#0d9488] px-4 py-2 text-xs font-semibold text-white">Sign out and try again</button>
+        </div>
+      </div>
+    );
   }
 
   const renderActiveView = () => {
@@ -218,7 +264,7 @@ function AppContent() {
               <div className="flex items-center gap-4 text-muted-foreground">
                 <button onClick={() => handleTabChange('landing')} className="hover:text-foreground">Landing Page</button>
                 <button onClick={() => handleTabChange('pricing')} className="hover:text-foreground">Pricing</button>
-                <button onClick={() => { logoutUser(); handleTabChange('login'); }} className="hover:text-foreground">Sign Out</button>
+                <button onClick={async () => { await logoutUser(); handleTabChange('login'); }} className="hover:text-foreground">Sign Out</button>
               </div>
             </div>
           </footer>
@@ -240,8 +286,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <DataProvider>
-      <AppContent />
-    </DataProvider>
+    <AuthProvider>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
+    </AuthProvider>
   );
 }

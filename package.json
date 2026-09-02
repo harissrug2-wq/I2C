@@ -7,14 +7,15 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs",
+    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs",
     "reconcile": "node scripts/reconcile.mjs",
     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
     "test:module1": "node scripts/module1-csv-tests.mjs",
     "test:module2": "node scripts/module2-receivables-tests.mjs",
     "test:module3": "node scripts/module3-payables-tests.mjs",
     "test:module4": "node scripts/module4-cash-forecast-tests.mjs",
-    "test:module5": "node scripts/module5-inventory-tests.mjs"
+    "test:module5": "node scripts/module5-inventory-tests.mjs",
+    "test:auth": "node scripts/auth-isolation-tests.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -22,7 +23,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "@supabase/supabase-js": "^2.112.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
