@@ -32,6 +32,11 @@ export const DEFAULT_THRESHOLDS = {
   cost_per_chase_hour: 45,
   forecast_confidence_factor: 0.15,
 
+  // Cross-domain calibrated defaults. These remain workspace-overridable.
+  xd_inventory_hostage_multiplier: 1.5,
+  xd_risky_sku_customer_share: 0.60,
+  xd_writeoff_inventory_min: 2000,
+
   // Phase 1 configurable rule thresholds.
   wcm_baseline_multiplier: phase1Config.rules['WCM-001'].baselineMultiplier,
   wcm_mom_deterioration_pct: phase1Config.rules['WCM-004'].momDeteriorationPct,

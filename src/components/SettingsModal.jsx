@@ -34,7 +34,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           <div className="rounded-xl bg-[#0d9488]/10 p-4 border border-[#0d9488]/20 flex items-start gap-3">
             <ShieldCheck className="size-5 text-[#0d9488] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Calculation parameters update in real time. Workspace overrides persist locally in this build; durable backend configuration and audit persistence remain a production hardening task.
+              Calculation parameters update in real time and persist to this authenticated workspace. Threshold-change audit history remains a production hardening task.
             </p>
           </div>
 
@@ -142,6 +142,30 @@ export default function SettingsModal({ isOpen, onClose }) {
                   className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">Default LGD used for Expected Credit Loss provisioning.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Cross-Domain Intelligence Controls */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">
+              Cross-Domain Intelligence
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block font-semibold mb-1">Inventory Hostage Threshold (x Median Invoice)</label>
+                <input type="number" min="0" step="0.1" value={thresholds.xd_inventory_hostage_multiplier ?? 1.5} onChange={(e) => updateThreshold('xd_inventory_hostage_multiplier', e.target.value)} className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]" />
+                <p className="mt-1 text-[11px] text-muted-foreground">Overdue-customer inventory exposure above this multiple can trigger an inventory-hostage signal.</p>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">High-Risk SKU Customer Share (%)</label>
+                <input type="number" min="0" max="100" step="1" value={Math.round((thresholds.xd_risky_sku_customer_share ?? 0.60) * 100)} onChange={(e) => updateThreshold('xd_risky_sku_customer_share', Number(e.target.value) / 100)} className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]" />
+                <p className="mt-1 text-[11px] text-muted-foreground">Observed SKU sales share to customers with PayScore above 60.</p>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Write-Off Inventory Recovery Floor ($)</label>
+                <input type="number" min="0" step="100" value={thresholds.xd_writeoff_inventory_min ?? 2000} onChange={(e) => updateThreshold('xd_writeoff_inventory_min', e.target.value)} className="w-full rounded-lg bg-surface px-3 py-2 border border-border text-foreground focus:outline-none focus:border-[#0d9488]" />
+                <p className="mt-1 text-[11px] text-muted-foreground">Minimum tracked inventory cost before physical recovery is recommended ahead of a write-off.</p>
               </div>
             </div>
           </div>

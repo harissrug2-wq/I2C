@@ -4,6 +4,7 @@ import { buildEngineInputs } from '../domain/dataAdapters';
 import { DEFAULT_THRESHOLDS, computeSystem1, computeSystem2, computeSystem3, computeSystem4, computeSystem5, evaluateRules } from '../utils/decisionSystems';
 import { evaluateReceivablesRules } from '../domain/receivables';
 import { computePayablesModule, evaluatePayablesRules } from '../domain/payables';
+import { computeCrossDomainIntelligence } from '../domain/crossDomain';
 import { loadWorkspaceState, saveWorkspaceState } from '../domain/workspaceRepository';
 import { useAuth } from './AuthContext';
 
@@ -103,11 +104,12 @@ export function DataProvider({ children }) {
       totalDiscountSavings: payables.totalDiscountSavings,
     };
     const sys5 = computeSystem5(engine.products, engine.customers, engine.vendors, thresholds);
+    const crossDomain = computeCrossDomainIntelligence({ workspace: workspaceData, sys1, sys2, sys3, sys4, thresholds });
     const phase1Advisories = evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds);
     const receivablesAdvisories = evaluateReceivablesRules(sys4.receivables || sys4);
     const payablesAdvisories = evaluatePayablesRules(payables, sys3, thresholds, { includeAP002: false, includeAP003: false, includeAP004: false });
-    return { sys1, sys2, sys3, sys4, sys5, advisories: [...phase1Advisories, ...receivablesAdvisories, ...payablesAdvisories] };
-  }, [engine, thresholds]);
+    return { sys1, sys2, sys3, sys4, sys5, crossDomain, advisories: [...phase1Advisories, ...receivablesAdvisories, ...payablesAdvisories, ...crossDomain.advisories] };
+  }, [engine, thresholds, workspaceData]);
 
   const updateThreshold = (key, value) => setThresholds(p => ({ ...p, [key]: Number(value) }));
   const resetThresholds = () => setThresholds({ ...DEFAULT_THRESHOLDS });

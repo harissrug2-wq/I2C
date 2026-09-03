@@ -1,0 +1,55 @@
+{
+  "version": "cross-domain-2026-09",
+  "rules": {
+    "INV-XD-001": {
+      "enabled": true,
+      "severity": "CRITICAL",
+      "inventoryHostageMultiplier": 1.5,
+      "status": "operational"
+    },
+    "INV-XD-002": {
+      "enabled": true,
+      "severity": "MEDIUM",
+      "highRiskScoreMin": 60,
+      "riskyCustomerShareMin": 0.6,
+      "status": "operational"
+    },
+    "BAD-XD-001": {
+      "enabled": true,
+      "severity": "HIGH",
+      "inventoryRecoveryMin": 2000,
+      "status": "operational"
+    },
+    "BAD-XD-002": {
+      "enabled": true,
+      "severity": "MEDIUM",
+      "status": "operational"
+    },
+    "BAD-XD-003": {
+      "enabled": false,
+      "severity": "HIGH",
+      "status": "waiting_peer_benchmark"
+    },
+    "BAD-XD-004": {
+      "enabled": false,
+      "severity": "MEDIUM",
+      "status": "waiting_growth_history"
+    },
+    "AR-AP-XD-001": {
+      "enabled": true,
+      "severity": "HIGH",
+      "status": "operational"
+    },
+    "AR-AP-XD-002": {
+      "enabled": true,
+      "severity": "HIGH",
+      "wcGapDaysMin": 15,
+      "status": "data_conditional"
+    },
+    "AR-AP-XD-003": {
+      "enabled": false,
+      "severity": "MEDIUM",
+      "status": "waiting_calibration"
+    }
+  }
+}
