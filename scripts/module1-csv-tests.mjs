@@ -21,8 +21,13 @@ assert.equal(engine.invoices.filter(i=>i.balanceDue>0).reduce((s,i)=>s+i.balance
 assert.equal(engine.bills.filter(b=>b.balanceDue>0).reduce((s,b)=>s+b.balanceDue,0),715300,'AP reconciliation must survive CSV round-trip');
 
 const bad=await importCsvFiles([{name:'invoices.csv',text:'invoice_no,customer_id,invoice_date,due_date,total,balance_due\nINV-X,MISSING,2026-08-01,2026-08-31,100,100\n'}],workspace);
+<<<<<<< HEAD
 assert.equal(bad.ok,true,'missing customer FK must not reject a best-effort manual CSV import');
 assert.ok(bad.warnings.some(e=>e.includes('missing customer')),'missing customer warning should be explicit');
 assert.equal(bad.workspace.invoices.some(i=>i.invoice_no==='INV-X'),true,'available invoice values should still be imported');
+=======
+assert.equal(bad.ok,false,'missing customer FK must reject import');
+assert.ok(bad.errors.some(e=>e.includes('missing customer')),'missing customer error should be explicit');
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 
 console.log('✓ Module 1 CSV import tests passed');

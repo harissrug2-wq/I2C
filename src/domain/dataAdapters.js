@@ -148,6 +148,7 @@ export function buildEngineInputs(workspace) {
   workspace.paymentsReceived.forEach(p => (p.applied_to || []).forEach(a => { receiptAllocations[a.invoice_no] = (receiptAllocations[a.invoice_no] || 0) + Number(a.amount || 0); }));
   const paymentAllocations = {};
   workspace.paymentsMade.forEach(p => { paymentAllocations[p.applied_to_bill] = (paymentAllocations[p.applied_to_bill] || 0) + Number(p.amount_paid || 0) + Number(p.discount_taken || 0); });
+<<<<<<< HEAD
   const normalizeStatus = value => String(value ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
   const statusClosesBalance = value => {
     const status = normalizeStatus(value);
@@ -176,6 +177,10 @@ export function buildEngineInputs(workspace) {
     if (hasValue(b.balance_due)) return amountOrZero(b.balance_due);
     return total;
   };
+=======
+  const invoiceBalance = i => receiptAllocations[i.invoice_no] != null ? Math.max(0, Number(i.total || 0) - receiptAllocations[i.invoice_no]) : Number(i.balance_due || 0);
+  const billBalance = b => paymentAllocations[b.bill_no] != null ? Math.max(0, Number(b.total || 0) - paymentAllocations[b.bill_no]) : Number(b.balance_due || 0);
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   const delivered = deliveredInventoryByCustomer({...workspace, invoices: workspace.invoices.map(i => ({...i, balance_due: invoiceBalance(i)}))});
 
   const customers = workspace.customers.map(c => {

@@ -17,11 +17,19 @@ const round1 = n => Math.round(Number(n || 0) * 10) / 10;
 const round2 = n => Math.round(Number(n || 0) * 100) / 100;
 const money = n => Math.round(Number(n || 0));
 
+<<<<<<< HEAD
 export const RECEIVABLES_MODEL_VERSION = 'receivables-2026-09';
 
 export const RECEIVABLES_CONFIG = Object.freeze({
   payScore: {
     model: 'payment-history-plus-delinquency-reference',
+=======
+export const RECEIVABLES_MODEL_VERSION = 'module2-receivables-2026-08';
+
+export const RECEIVABLES_CONFIG = Object.freeze({
+  payScore: {
+    model: 'avg-days-late-reference',
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     provisional: true,
     bands: [
       { maxExclusive: 0, score: 15, label: 'Excellent', riskTier: 'LOW' },
@@ -37,6 +45,7 @@ export const RECEIVABLES_CONFIG = Object.freeze({
     p3Min: 40,
   },
   ecl: {
+<<<<<<< HEAD
     // Latest Small Test Dataset / Expected Results workbook explicitly defines
     // Current = 0.5%, 31-60 = 5%, 120+ = 65%, with LGD = 85%.
     // Buckets not specified there retain the prior design-v1 rates.
@@ -48,6 +57,21 @@ export const RECEIVABLES_CONFIG = Object.freeze({
       '91-120': 0.45,
       '120+': 0.65,
     },
+=======
+    // Formal Decision Systems Design v1 schedule.
+    pd: {
+      Current: 0.01,
+      '1-30': 0.03,
+      '31-60': 0.08,
+      '61-90': 0.22,
+      '91-120': 0.45,
+      '120+': 0.68,
+    },
+    lowRiskPayScoreMax: 30,
+    lowRiskMultiplier: 0.5,
+    highRiskPayScoreMin: 80,
+    highRiskMultiplier: 1.5,
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     lgd: 0.85,
   },
 });
@@ -98,6 +122,7 @@ export function referencePayScore(avgDaysLate, historyCount = 0) {
   };
 }
 
+<<<<<<< HEAD
 function coldStartPayScore(maxDaysOverdue = 0) {
   const days=Math.max(0,Number(maxDaysOverdue||0));
   if(days>120) return {score:85,label:'Critical delinquency',riskTier:'CRITICAL',provisional:true,confidence:78,basis:`No payment history; oldest open invoice is ${days} days overdue`};
@@ -107,6 +132,8 @@ function coldStartPayScore(maxDaysOverdue = 0) {
   return {score:25,label:'Cold start',riskTier:'LOW',provisional:true,confidence:25,basis:'No payment history and no overdue open invoices'};
 }
 
+=======
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 function median(values) {
   const nums = values.map(Number).filter(Number.isFinite).sort((a, b) => a - b);
   if (!nums.length) return 0;
@@ -165,10 +192,17 @@ function priorityForCustomer(customer, invoiceMedian) {
 function eclForInvoice(invoice, payScore, lgd) {
   const bucket = receivablesAgingBucket(invoice.daysOverdue);
   const basePD = Number(RECEIVABLES_CONFIG.ecl.pd[bucket] || 0);
+<<<<<<< HEAD
   // Latest workbook formula is ECL = open balance × aging-bucket PD × LGD.
   // PayScore drives collections/credit risk but does not change ECL PD.
   const multiplier = 1;
   const adjustedPD = clamp(basePD, 0, 1);
+=======
+  let multiplier = 1;
+  if (Number(payScore) < RECEIVABLES_CONFIG.ecl.lowRiskPayScoreMax) multiplier = RECEIVABLES_CONFIG.ecl.lowRiskMultiplier;
+  else if (Number(payScore) > RECEIVABLES_CONFIG.ecl.highRiskPayScoreMin) multiplier = RECEIVABLES_CONFIG.ecl.highRiskMultiplier;
+  const adjustedPD = clamp(basePD * multiplier, 0, 1);
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   const ecl = Number(invoice.balanceDue || 0) * adjustedPD * lgd;
   return {
     ...invoice,
@@ -189,8 +223,11 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
 
   const customerScoreMap = new Map();
   const customerRows = customers.map(customer => {
+<<<<<<< HEAD
     const open = openInvoices.filter(inv => inv.customerId === customer.id);
     const maxOpenDaysOverdue = open.length ? Math.max(...open.map(inv => Number(inv.daysOverdue || 0))) : 0;
+=======
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     const pay = customer.riskScoreOverride != null
       ? {
           score: clamp(customer.riskScoreOverride, 0, 100),
@@ -200,9 +237,15 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
           confidence: 95,
           basis: 'Workspace risk score override',
         }
+<<<<<<< HEAD
       : Number(customer.paymentHistoryCount || 0) > 0
         ? referencePayScore(customer.avgDaysLate, customer.paymentHistoryCount)
         : coldStartPayScore(maxOpenDaysOverdue);
+=======
+      : referencePayScore(customer.avgDaysLate, customer.paymentHistoryCount);
+
+    const open = openInvoices.filter(inv => inv.customerId === customer.id);
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     const buckets = emptyBuckets();
     open.forEach(inv => { buckets[receivablesAgingBucket(inv.daysOverdue)] += Number(inv.balanceDue || 0); });
     const utilization = Number(customer.creditLimit || 0) > 0 ? Number(customer.balance || 0) / Number(customer.creditLimit) : null;
@@ -292,19 +335,32 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     lowestRiskCustomer,
     payScoreModel: {
       status: customersWithECL.some(c => c.payScoreProvisional) ? 'provisional' : 'final',
+<<<<<<< HEAD
       method: 'Payment-history lateness bands; when history is absent, open-invoice delinquency supplies the cold-start risk score',
       missingSpecification: 'i2C Intelligence Specification',
       sourceConflict: 'The full seven-component Intelligence Specification is still unavailable, so this remains a transparent provisional model.',
+=======
+      method: 'Simplified avg-days-late bands from Calculation Visuals workbook',
+      missingSpecification: 'i2C Intelligence Specification',
+      sourceConflict: 'A supplied deep-dive reference demonstrates a different seven-component score than the all-customer reference workbook; the current model therefore remains explicitly provisional.',
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     },
     priorityModel: {
       status: 'provisional',
       reason: 'Collection Priority Score component names and buckets are specified, but calibrated component weights are not supplied.',
     },
     eclModel: {
+<<<<<<< HEAD
       status: 'latest-test-workbook',
       pdSchedule: { ...RECEIVABLES_CONFIG.ecl.pd },
       lgd,
       payScoreMultipliers: 'Not applied — latest Expected Results workbook defines ECL as Balance × aging PD × LGD.',
+=======
+      status: 'design-v1',
+      pdSchedule: { ...RECEIVABLES_CONFIG.ecl.pd },
+      lgd,
+      payScoreMultipliers: `<${RECEIVABLES_CONFIG.ecl.lowRiskPayScoreMax}: ×${RECEIVABLES_CONFIG.ecl.lowRiskMultiplier}; >${RECEIVABLES_CONFIG.ecl.highRiskPayScoreMin}: ×${RECEIVABLES_CONFIG.ecl.highRiskMultiplier}`,
+>>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     },
   };
 }
