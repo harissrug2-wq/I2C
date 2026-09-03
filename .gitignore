@@ -14,3 +14,6 @@ coverage/
 I2C-module*-checkpoint/
 .vercel
 .env*
+
+.vercel
+.env*

@@ -39,15 +39,9 @@ for(const c of r.customers) assert.equal(c.payScore,expectedScores[c.name],`${c.
 assert.equal(r.highestRiskCustomer.name,'Northgate Supply Co.');
 assert.equal(r.lowestRiskCustomer.name,'Brightline Electric');
 
-<<<<<<< HEAD
 // Latest Expected Results workbook ECL rules + 85% LGD.
 assert.equal(r.eclModel.status,'latest-test-workbook');
 assert.equal(r.totalECL,37168.16);
-=======
-// Formal Decision Systems Design v1 ECL schedule + 85% LGD.
-assert.equal(r.eclModel.status,'design-v1');
-assert.equal(r.totalECL,45291.77);
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 assert.equal(r.highestECLInvoice.invoiceNo,'INV-4438');
 assert.equal(r.highestECLInvoice.ecl,13875.4);
 const northgate4412=r.invoices.find(i=>i.invoiceNo==='INV-4412');

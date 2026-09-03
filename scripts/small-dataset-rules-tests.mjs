@@ -47,6 +47,14 @@ assert.equal(ar.totalECL,4087.86);
 assert.equal(ar.customers.find(c=>c.id==='CUS-002').payScore,15);
 assert.equal(ar.customers.find(c=>c.id==='CUS-001').payScore,85);
 assert.equal(inv.totalValue,17350);
+assert.equal(inv.stockSkuCount,5);
+assert.equal(inv.totalUnitsOnHand,1100);
+assert.deepEqual(ar.invoiceCollectionQueue.map(i=>i.invoiceNo),['INV-1001','INV-1002','INV-1003','INV-1006']);
+assert.equal(ar.invoiceCollectionQueue[0].action,'BAD DEBT — legal escalation likely');
+assert.equal(ar.invoiceCollectionQueue[1].action,'Chase immediately');
+assert.equal(ar.invoiceCollectionQueue[2].action,'Preventive contact');
+assert.equal(ar.invoiceCollectionQueue[3].action,'Low priority (excellent payer)');
+assert.equal(ar.badDebtCandidates[0].grossBadDebtRecommendation,4290);
 
 const empty=createEmptyWorkspaceData();
 const crm=await importCsvFiles([{name:'hubspot-crm-exports-all-contacts-2026-05-14.csv',text:'Record ID,First Name,Last Name,Email,Phone,Unused CRM Field\n123,Ana,Smith,ana@example.com,,keep me\n124,Bob,Jones,bob@example.com,555-0102,extra\n'}],empty);
@@ -64,6 +72,25 @@ const importedEngine=buildEngineInputs(invoicesCsv.workspace);
 assert.equal(importedEngine.invoices.find(i=>i.invoiceNo==='EXT-1').balanceDue,0);
 assert.equal(importedEngine.invoices.find(i=>i.invoiceNo==='EXT-2').balanceDue,200);
 assert.ok(invoicesCsv.warnings.length>0);
+
+// WPS/Excel CSV exports can contain bare inch marks in unquoted product names.
+// These are literal characters, not CSV quote delimiters, and must not merge rows.
+const productCsvText='sku,name,category,supplier_id,uom,wac,reorder_point,safety_stock,on_hand,average_on_hand,warehouse,sell_price,sales_60d,annual_sales,lead_time_days,lead_time_stddev\n'
+  +'PEX-100,PEX Tubing 100ft Roll,Plumbing,sp-456,,$45.00,,,150,,,80.00,,,,\n'
+  +'CU-050,Copper Coupling 1/2" (Pack 25),Plumbing,sp-457,,$22.00,,,100,,,50.00,,,,\n'
+  +'BV-100,Brass Ball Valve 1",Plumbing,sp-458,,$15.00,,,200,,,30.00,,,,\n'
+  +'PVC-200,PVC Pipe 2" x 10ft,Plumbing,sp-457,,$12.00,,,250,,,25.00,,,,\n'
+  +'SC-500,Sealant Cartridge 500ml,Plumbing,sp-458,,$6.00,,,400,,,15.00,,,,\n';
+const productCsv=await importCsvFiles([{name:'products.csv',text:productCsvText}],createEmptyWorkspaceData());
+assert.equal(productCsv.ok,true);
+assert.equal(productCsv.workspace.products.length,5);
+assert.equal(productCsv.workspace.products.find(p=>p.sku==='CU-050').supplier_id,'sp-457');
+assert.equal(productCsv.workspace.products.find(p=>p.sku==='BV-100').wac,15);
+assert.equal(productCsv.workspace.products.find(p=>p.sku==='PVC-200').on_hand,250);
+const productEngine=buildEngineInputs(productCsv.workspace);
+const productInv=computeSystem2(productEngine.products,DEFAULT_THRESHOLDS);
+assert.equal(productInv.totalValue,17350);
+assert.equal(productInv.totalUnitsOnHand,1100);
 
 console.log('✓ Small workbook rules + flexible CSV tests passed');
 console.log(JSON.stringify({ar:s1.totalAR,aging:ar.aging.buckets,ecl:ar.totalECL,payScores:Object.fromEntries(ar.customers.map(c=>[c.name,c.payScore])),inventory:inv.totalValue,flexibleCsvWarnings:invoicesCsv.warnings.length},null,2));

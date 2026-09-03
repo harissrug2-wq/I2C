@@ -302,6 +302,7 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
   return {
     skus: processedSKUs,
     stockSkuCount: inventorySKUs.length,
+    totalUnitsOnHand: inventorySKUs.reduce((sum, p) => sum + Number(p.onHand || 0), 0),
     totalValue,
     healthyValue,
     overstockedValue,

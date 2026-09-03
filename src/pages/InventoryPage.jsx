@@ -27,7 +27,7 @@ export default function InventoryPage() {
       <Header />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric icon={Boxes} label="Inventory Value" value={money(sys2.totalValue)} detail={`${sys2.stockSkuCount} stocked SKUs`} />
+        <Metric icon={Boxes} label="Inventory Value" value={money(sys2.totalValue)} detail={`${sys2.stockSkuCount} stocked SKUs · ${sys2.totalUnitsOnHand.toLocaleString()} units on hand`} />
         <Metric icon={AlertTriangle} label="Reorder Signals" value={sys2.reorderAlertCount.toLocaleString()} detail="Lead-time and reorder-point signals" />
         <Metric icon={Layers3} label="At-Risk Inventory" value={money(atRiskValue)} detail="Dead, overstocked and slow-moving value" />
         <Metric icon={PackageCheck} label="Healthy / Active Value" value={money(sys2.healthyValue)} detail={`${sys2.healthyPercent}% of inventory value`} />

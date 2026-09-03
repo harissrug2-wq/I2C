@@ -187,7 +187,13 @@ export function parseCsv(text='') {
       else field+=ch;
       continue;
     }
-    if(ch==='"'){ quoted=true; continue; }
+    if(ch==='"'){
+      // Only a quote at the beginning of a field opens CSV quoting.
+      // Bare inch marks in unquoted values (for example 1/2" or 2") stay literal.
+      if(field.length===0){ quoted=true; continue; }
+      field+='"';
+      continue;
+    }
     if(ch===','){ row.push(field); field=''; continue; }
     if(ch==='\n' || ch==='\r'){
       if(ch==='\r' && src[i+1]==='\n') i++;

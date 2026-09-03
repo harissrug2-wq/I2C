@@ -177,6 +177,7 @@ function eclForInvoice(invoice, payScore, lgd) {
     payScoreMultiplier: multiplier,
     adjustedPD,
     lgd,
+    eclExact: ecl,
     ecl: round2(ecl),
   };
 }
@@ -230,7 +231,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   });
 
   const eclByCustomer = new Map();
-  eclInvoices.forEach(inv => eclByCustomer.set(inv.customerId, (eclByCustomer.get(inv.customerId) || 0) + inv.ecl));
+  eclInvoices.forEach(inv => eclByCustomer.set(inv.customerId, (eclByCustomer.get(inv.customerId) || 0) + Number(inv.eclExact ?? inv.ecl ?? 0)));
 
   const customersWithECL = customerRows.map(customer => {
     const creditLimit = Number(customer.creditLimit || 0);
@@ -261,11 +262,84 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   const totals = emptyBuckets();
   detailedInvoices.forEach(inv => { totals[inv.agingBucket] += Number(inv.balanceDue || 0); });
   const agingTotal = Object.values(totals).reduce((sum, n) => sum + n, 0);
-  const totalECL = detailedInvoices.reduce((sum, inv) => sum + Number(inv.ecl || 0), 0);
+  // Keep full precision until the portfolio total is calculated. This matches
+  // the workbook's bucket-level total (for example $4,087.86 instead of
+  // summing individually rounded invoice ECL values to $4,087.87).
+  const totalECL = detailedInvoices.reduce((sum, inv) => sum + Number(inv.eclExact ?? inv.ecl ?? 0), 0);
 
   const collectionQueue = [...customersWithECL]
     .filter(c => Number(c.balance || 0) > 0)
     .sort((a, b) => b.priorityScore - a.priorityScore || b.pastDue - a.pastDue || b.balance - a.balance);
+
+  // Invoice-level queue is the operational "who do I chase first" view used by
+  // the Small Test Dataset expected-results sheet. Customer-level collectionQueue
+  // is retained above for compatibility with existing calculations.
+  const tierRank = { P1: 4, P2: 3, P3: 2, P4: 1 };
+  const invoiceCollectionQueue = detailedInvoices.map(inv => {
+    const customer = customerMap.get(inv.customerId) || {};
+    const days = Math.max(0, Number(inv.daysOverdue || 0));
+    const balance = Number(inv.balanceDue || 0);
+    const payScore = Number(customer.payScore ?? inv.payScore ?? 25);
+    const amountRisk = invoiceMedian > 0 ? clamp((balance / invoiceMedian) * 10, 0, 20) : 0;
+    const ageRisk = clamp((days / 90) * 45, 0, 45);
+    const customerRisk = clamp(payScore * 0.25, 0, 25);
+    const historyRisk = paymentHistoryRisk(customer.avgDaysLate);
+    const disputeRisk = String(inv.status || '').toLowerCase().includes('disput') ? 5 : 0;
+    let priorityScore = Math.round(clamp(ageRisk + amountRisk + customerRisk + historyRisk + disputeRisk, 0, 100));
+    let priorityTier = 'P4';
+    let action = payScore < 30 ? 'Low priority (excellent payer)' : 'Automated reminder';
+
+    if (days > 120 && payScore > 70) {
+      priorityTier = 'P1';
+      priorityScore = Math.max(priorityScore, 90);
+      action = 'BAD DEBT — legal escalation likely';
+    } else if (days > 60 && payScore > 80) {
+      priorityTier = 'P1';
+      priorityScore = Math.max(priorityScore, 86);
+      action = 'Owner-level call today';
+    } else if (days > 30 && payScore >= 60) {
+      priorityTier = 'P2';
+      priorityScore = Math.max(priorityScore, 66);
+      action = 'Chase immediately';
+    } else if (days > 0) {
+      priorityTier = 'P3';
+      priorityScore = Math.max(priorityScore, 41);
+      action = 'Standard reminder cycle';
+    } else if (payScore >= 60) {
+      priorityTier = 'P3';
+      priorityScore = Math.max(priorityScore, 41);
+      action = 'Preventive contact';
+    }
+
+    return {
+      ...inv,
+      customerName: customer.name || inv.customerName,
+      payScore,
+      priorityScore,
+      priorityTier,
+      action,
+      priorityFactors: [
+        { name: 'Age risk', value: round1(ageRisk) },
+        { name: 'Amount risk', value: round1(amountRisk) },
+        { name: 'PayScore risk', value: round1(customerRisk) },
+        { name: 'Payment history risk', value: round1(historyRisk) },
+        { name: 'Dispute risk', value: round1(disputeRisk) },
+      ],
+    };
+  }).sort((a, b) =>
+    (tierRank[b.priorityTier] || 0) - (tierRank[a.priorityTier] || 0) ||
+    Number(b.daysOverdue || 0) - Number(a.daysOverdue || 0) ||
+    Number(b.payScore || 0) - Number(a.payScore || 0) ||
+    Number(b.balanceDue || 0) - Number(a.balanceDue || 0)
+  );
+
+  const badDebtCandidates = detailedInvoices
+    .filter(inv => Number(inv.daysOverdue || 0) > 120)
+    .map(inv => ({
+      ...inv,
+      grossBadDebtRecommendation: round2(Number(inv.balanceDue || 0) * Number(inv.basePD || 0)),
+      eclReserve: round2(inv.eclExact ?? inv.ecl ?? 0),
+    }));
 
   const highestECLInvoice = [...detailedInvoices].sort((a, b) => b.ecl - a.ecl)[0] || null;
   const highestRiskCustomer = [...customersWithECL].sort((a, b) => b.payScore - a.payScore || b.avgDaysLate - a.avgDaysLate)[0] || null;
@@ -285,6 +359,8 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     customers: customersWithECL,
     invoices: detailedInvoices,
     collectionQueue,
+    invoiceCollectionQueue,
+    badDebtCandidates,
     totalECL: round2(totalECL),
     collectibleAR: round2(Math.max(0, totalARExact - totalECL)),
     moneyAtRisk: money(detailedInvoices.filter(i => i.payScore >= 60 || i.daysOverdue > 60).reduce((s, i) => s + Number(i.balanceDue || 0), 0)),

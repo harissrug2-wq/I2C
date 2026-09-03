@@ -1,11 +1,21 @@
-import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const target = path.resolve(process.cwd(), 'scripts/module1-csv-tests.mjs');
+
+if (!fs.existsSync(target)) {
+  console.error('Cannot find scripts/module1-csv-tests.mjs. Run this from the I2C repo root.');
+  process.exit(1);
+}
+
+const clean = `import assert from 'node:assert/strict';
 import { importCsvFiles, parseCsv, workspaceToCsv } from '../src/domain/csvImport.js';
 import { buildEngineInputs } from '../src/domain/dataAdapters.js';
 import { loadReferenceWorkspace } from './referenceWorkspace.mjs';
 
 const workspace = loadReferenceWorkspace();
 
-const parsed=parseCsv('id,name\r\nCUS-X,"Acme, Inc."\r\n');
+const parsed=parseCsv('id,name\\\\r\\\\nCUS-X,"Acme, Inc."\\\\r\\\\n');
 assert.equal(parsed.rows[0].name,'Acme, Inc.','quoted CSV fields must parse');
 
 const datasets=['customers','suppliers','invoices','invoiceLines','bills','paymentsReceived','paymentsMade','products','bankAccounts','companyMetrics'];
@@ -33,7 +43,7 @@ const result=await importCsvFiles(files,workspace);
 assert.equal(
   result.ok,
   true,
-  `reference bundle must import: ${result.errors?.join('; ')}`
+  \`reference bundle must import: \${result.errors?.join('; ')}\`
 );
 
 assert.equal(
@@ -71,7 +81,7 @@ assert.equal(
 // not reject the entire CSV import.
 const partial=await importCsvFiles([{
   name:'invoices.csv',
-  text:'invoice_no,customer_id,invoice_date,due_date,total,balance_due\nINV-X,MISSING,2026-08-01,2026-08-31,100,100\n'
+  text:'invoice_no,customer_id,invoice_date,due_date,total,balance_due\\\\nINV-X,MISSING,2026-08-01,2026-08-31,100,100\\\\n'
 }],workspace);
 
 assert.equal(
@@ -92,3 +102,26 @@ assert.equal(
 );
 
 console.log('✓ Module 1 CSV import tests passed');
+`;
+
+const current = fs.readFileSync(target, 'utf8');
+const hadConflict = /^(<<<<<<<|=======|>>>>>>>)/m.test(current);
+
+fs.copyFileSync(
+  target,
+  `${target}.conflict-backup`
+);
+
+fs.writeFileSync(
+  target,
+  clean,
+  'utf8'
+);
+
+console.log(
+  `✓ Repaired ${path.relative(process.cwd(), target)}`
+);
+
+console.log(
+  `✓ Backup: ${path.relative(process.cwd(), target)}.conflict-backup`
+);
