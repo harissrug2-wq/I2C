@@ -7,11 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-<<<<<<< HEAD
     "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs && node scripts/small-dataset-rules-tests.mjs",
-=======
-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs",
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
     "reconcile": "node scripts/reconcile.mjs",
     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
     "test:module1": "node scripts/module1-csv-tests.mjs",
@@ -19,12 +15,8 @@
     "test:module3": "node scripts/module3-payables-tests.mjs",
     "test:module4": "node scripts/module4-cash-forecast-tests.mjs",
     "test:module5": "node scripts/module5-inventory-tests.mjs",
-<<<<<<< HEAD
     "test:auth": "node scripts/auth-isolation-tests.mjs",
     "test:small-dataset": "node scripts/small-dataset-rules-tests.mjs"
-=======
-    "test:auth": "node scripts/auth-isolation-tests.mjs"
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   "dependencies": {
     "clsx": "^2.1.1",
