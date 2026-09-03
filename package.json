@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs && node scripts/small-dataset-rules-tests.mjs && node scripts/module6-cross-domain-tests.mjs",
+    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs && node scripts/small-dataset-rules-tests.mjs && node scripts/module6-cross-domain-tests.mjs && node scripts/module7-integrations-tests.mjs",
     "reconcile": "node scripts/reconcile.mjs",
     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
     "test:module1": "node scripts/module1-csv-tests.mjs",
@@ -17,7 +17,8 @@
     "test:module5": "node scripts/module5-inventory-tests.mjs",
     "test:auth": "node scripts/auth-isolation-tests.mjs",
     "test:small-dataset": "node scripts/small-dataset-rules-tests.mjs",
-    "test:cross-domain": "node scripts/module6-cross-domain-tests.mjs"
+    "test:cross-domain": "node scripts/module6-cross-domain-tests.mjs",
+    "test:integrations": "node scripts/module7-integrations-tests.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

@@ -5,6 +5,7 @@ import { DEFAULT_THRESHOLDS, computeSystem1, computeSystem2, computeSystem3, com
 import { evaluateReceivablesRules } from '../domain/receivables';
 import { computePayablesModule, evaluatePayablesRules } from '../domain/payables';
 import { computeCrossDomainIntelligence } from '../domain/crossDomain';
+import { applyProviderSync, disconnectProvider, getIntegrationSummary } from '../domain/integrations';
 import { loadWorkspaceState, saveWorkspaceState } from '../domain/workspaceRepository';
 import { useAuth } from './AuthContext';
 
@@ -87,6 +88,7 @@ export function DataProvider({ children }) {
   }, [workspaceData, thresholds, authUser?.id, workspaceId]);
 
   const engine = useMemo(() => buildEngineInputs(workspaceData), [workspaceData]);
+  const integrationSummary = useMemo(() => getIntegrationSummary(workspaceData), [workspaceData]);
   const computedData = useMemo(() => {
     const sys1 = computeSystem1(engine.cashBalance, engine.invoices, engine.products, engine.bills, engine.metrics, thresholds);
     const sys2 = computeSystem2(engine.products, thresholds);
@@ -129,6 +131,16 @@ export function DataProvider({ children }) {
   });
   const resetWorkspace = () => setWorkspaceData(createEmptyWorkspaceData());
   const replaceWorkspace = data => setWorkspaceData(data);
+  const syncIntegrationPayload = (providerId, payload, options = {}) => {
+    const result = applyProviderSync(workspaceData, providerId, payload, options);
+    setWorkspaceData(result.workspace);
+    return result;
+  };
+  const disconnectIntegration = (providerId, options = {}) => {
+    const next = disconnectProvider(workspaceData, providerId, options);
+    setWorkspaceData(next);
+    return next;
+  };
   const hasWorkspaceData = Boolean(
     workspaceData.customers?.length || workspaceData.suppliers?.length || workspaceData.invoices?.length ||
     workspaceData.bills?.length || workspaceData.products?.length || workspaceData.bankAccounts?.length ||
@@ -148,6 +160,9 @@ export function DataProvider({ children }) {
     updateThreshold,
     resetThresholds,
     workspaceData,
+    integrationSummary,
+    syncIntegrationPayload,
+    disconnectIntegration,
     updateDataset,
     updateCompanyMetrics,
     resetWorkspace,

@@ -13,6 +13,12 @@ export function createEmptyWorkspaceData() {
     paymentsMade: [],
     products: [],
     bankAccounts: [],
+    integrations: {
+      version: 'dynamic-integrations-foundation-2026-09',
+      providers: {
+        manual: { status: 'active', connectionMode: 'manual' },
+      },
+    },
     companyMetrics: {
       as_of_date: todayIso(),
       revenue_last_30_days: 0,
