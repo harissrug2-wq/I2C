@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --radius: 0.875rem;
+    --background: oklch(97.5% 0.004 235);
+    --foreground: oklch(26% 0.02 240);
+    --card: oklch(100% 0 0);
+    --card-foreground: oklch(26% 0.02 240);
+    --popover: oklch(100% 0 0);
+    --popover-foreground: oklch(26% 0.02 240);
+    --primary: oklch(30% 0.062 172);
+    --primary-foreground: oklch(99% 0.01 130);
+    --secondary: oklch(94.5% 0.006 240);
+    --secondary-foreground: oklch(30% 0.062 172);
+    --muted: oklch(95.5% 0.005 240);
+    --muted-foreground: oklch(53% 0.02 245);
+    --accent: oklch(83% 0.19 128);
+    --accent-foreground: oklch(26% 0.03 160);
+    --destructive: oklch(57.7% 0.2 27.325);
+    --destructive-foreground: oklch(98.4% 0.003 247.858);
+    --border: oklch(90.5% 0.008 245);
+    --input: oklch(90.5% 0.008 245);
+    --ring: oklch(83% 0.19 128);
+    
+    --lime: oklch(83% 0.19 128);
+    --lime-foreground: oklch(26% 0.03 160);
+    --emerald: oklch(30% 0.062 172);
+    --emerald-foreground: oklch(97% 0.01 150);
+    --critical: oklch(57% 0.2 25);
+    --critical-foreground: oklch(98.5% 0.01 25);
+    --elevated: oklch(72% 0.16 65);
+    --elevated-foreground: oklch(24% 0.05 60);
+    --healthy: oklch(62% 0.14 155);
+    --healthy-foreground: oklch(99% 0.01 150);
+    --surface: oklch(96.5% 0.005 240);
+    
+    --ai: oklch(46% 0.19 300);
+    --ai-foreground: oklch(98.5% 0.008 300);
+    --ai-soft: oklch(96% 0.02 300);
+    
+    --sidebar: oklch(24% 0.05 172);
+    --sidebar-foreground: oklch(93% 0.01 150);
+    --sidebar-primary: oklch(83% 0.19 128);
+    --sidebar-primary-foreground: oklch(24% 0.05 160);
+    --sidebar-accent: oklch(31% 0.05 170);
+    --sidebar-accent-foreground: oklch(97% 0.01 150);
+    --sidebar-border: oklch(34% 0.045 170);
+    --sidebar-ring: oklch(83% 0.19 128);
+    
+    --gradient-hero: linear-gradient(135deg, oklch(28% .06 172), oklch(20% .045 168) 55%, oklch(32% .09 150));
+    --shadow-card: 0 1px 2px oklch(26% .02 240 / 0.04), 0 8px 24px -12px oklch(26% .02 240 / 0.12);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.card-surface {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow-card);
+}
+
+.sidebar-container {
+  background-color: var(--sidebar);
+  color: var(--sidebar-foreground);
+  border-color: var(--sidebar-border);
+}
+
+/* Custom utility colors */
+.bg-sidebar { background-color: var(--sidebar); }
+.bg-sidebar-accent { background-color: var(--sidebar-accent); }
+.bg-card { background-color: var(--card); }
+.bg-background { background-color: var(--background); }
+.bg-surface { background-color: var(--surface); }
+.bg-emerald { background-color: var(--emerald); }
+.bg-lime { background-color: var(--lime); }
+.bg-critical { background-color: var(--critical); }
+.bg-elevated { background-color: var(--elevated); }
+.bg-healthy { background-color: var(--healthy); }
+.bg-ai { background-color: var(--ai); }
+.bg-ai-soft { background-color: var(--ai-soft); }
+
+.text-sidebar-foreground { color: var(--sidebar-foreground); }
+.text-foreground { color: var(--foreground); }
+.text-muted-foreground { color: var(--muted-foreground); }
+.text-lime { color: var(--lime); }
+.text-emerald { color: var(--emerald); }
+.text-emerald-foreground { color: var(--emerald-foreground); }
+.text-critical { color: var(--critical); }
+.text-elevated { color: var(--elevated); }
+.text-healthy { color: var(--healthy); }
+.text-primary { color: var(--primary); }
+.text-ai { color: var(--ai); }
+.text-ai-foreground { color: var(--ai-foreground); }
+
+.border-sidebar-border { border-color: var(--sidebar-border); }
+.border-border { border-color: var(--border); }
+.border-critical { border-color: var(--critical); }
+.border-elevated { border-color: var(--elevated); }
+.border-lime { border-color: var(--lime); }
+.border-primary { border-color: var(--primary); }
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
