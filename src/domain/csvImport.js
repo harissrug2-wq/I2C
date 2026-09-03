@@ -4,16 +4,12 @@ const DATASETS = {
     key: row => row.id,
     required: ['id','name'],
     numbers: ['credit_limit','broken_promises','risk_score_override'],
-<<<<<<< HEAD
     aliases: {
       customer_id:'id', customer_number:'id', record_id:'id', contact_id:'id', hs_object_id:'id',
       customer_name:'name', contact_name:'name', full_name:'name',
       phone_number:'phone', mobile_phone:'phone', mobile_phone_number:'phone',
       creditlimit:'credit_limit', credit_limit_amount:'credit_limit',
     },
-=======
-    aliases: { customer_id:'id', customer_name:'name', creditlimit:'credit_limit' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   suppliers: {
     filenames: ['suppliers','supplier','vendors','vendor','suppliers_master','vendors_master'],
@@ -21,15 +17,11 @@ const DATASETS = {
     required: ['id','name'],
     numbers: ['discount_pct','discount_days','net_days','lead_time_days','lead_time_stddev'],
     booleans: ['allows_extension','single_source_for_class_a'],
-<<<<<<< HEAD
     aliases: {
       supplier_id:'id', vendor_id:'id', vendor_number:'id', supplier_number:'id', record_id:'id',
       supplier_name:'name', vendor_name:'name', company_name:'name',
       phone_number:'phone', mobile_phone:'phone',
     },
-=======
-    aliases: { supplier_id:'id', vendor_id:'id', supplier_name:'name', vendor_name:'name' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   invoices: {
     filenames: ['invoices','invoice','ar_ledger','accounts_receivable','receivables'],
@@ -37,7 +29,6 @@ const DATASETS = {
     required: ['invoice_no','customer_id','invoice_date','due_date','total'],
     numbers: ['total','balance_due'],
     dates: ['invoice_date','due_date','paid_date'],
-<<<<<<< HEAD
     aliases: {
       invoice:'invoice_no', invoice_id:'invoice_no', invoice_number:'invoice_no', document_number:'invoice_no',
       customer:'customer_id', customer_number:'customer_id', account_id:'customer_id',
@@ -45,24 +36,17 @@ const DATASETS = {
       balance:'balance_due', amount_due:'balance_due', open_balance:'balance_due', outstanding_balance:'balance_due',
       date:'invoice_date', invoice_date_date:'invoice_date', due:'due_date', due_date_date:'due_date',
     },
-=======
-    aliases: { invoice:'invoice_no', invoice_number:'invoice_no', customer:'customer_id', amount:'total', balance:'balance_due' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   invoiceLines: {
     filenames: ['invoice_lines','invoice_line_items','invoiceitems','ar_line_items'],
     key: row => `${row.invoice_no}::${row.line_no}`,
     required: ['invoice_no','line_no','sku','qty','unit_price'],
     numbers: ['line_no','qty','unit_price','line_total'],
-<<<<<<< HEAD
     aliases: {
       invoice:'invoice_no', invoice_number:'invoice_no', invoice_id:'invoice_no',
       product:'sku', product_sku:'sku', item:'sku', item_sku:'sku', product_code:'sku',
       quantity:'qty', quantity_sold:'qty', unitprice:'unit_price', unit_price_amount:'unit_price', amount:'line_total',
     },
-=======
-    aliases: { invoice:'invoice_no', invoice_number:'invoice_no', product:'sku', product_sku:'sku', quantity:'qty', unitprice:'unit_price', amount:'line_total' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   bills: {
     filenames: ['bills','bill','ap_ledger','accounts_payable','payables'],
@@ -70,7 +54,6 @@ const DATASETS = {
     required: ['bill_no','supplier_id','bill_date','due_date','total'],
     numbers: ['total','balance_due','discount_available'],
     dates: ['bill_date','due_date'],
-<<<<<<< HEAD
     aliases: {
       bill:'bill_no', bill_id:'bill_no', bill_number:'bill_no', document_number:'bill_no',
       vendor_id:'supplier_id', supplier:'supplier_id', vendor:'supplier_id', supplier_number:'supplier_id',
@@ -78,9 +61,6 @@ const DATASETS = {
       balance:'balance_due', amount_due:'balance_due', open_balance:'balance_due', outstanding_balance:'balance_due',
       date:'bill_date', due:'due_date',
     },
-=======
-    aliases: { bill:'bill_no', bill_number:'bill_no', vendor_id:'supplier_id', supplier:'supplier_id', vendor:'supplier_id', amount:'total', balance:'balance_due' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   paymentsReceived: {
     filenames: ['payments_received','payment_received','receipts','payments_in','customer_payments'],
@@ -88,16 +68,12 @@ const DATASETS = {
     required: ['receipt_no','customer_id','payment_date','amount'],
     numbers: ['amount','applied_amount'],
     dates: ['payment_date'],
-<<<<<<< HEAD
     aliases: {
       receipt:'receipt_no', receipt_id:'receipt_no', payment_no:'receipt_no', transaction_id:'receipt_no',
       customer:'customer_id', customer_number:'customer_id', invoice:'invoice_no', invoice_number:'invoice_no',
       applied_invoice:'invoice_no', applied_to_invoice:'invoice_no', payment_amount:'amount', amount_received:'amount',
       date:'payment_date',
     },
-=======
-    aliases: { receipt:'receipt_no', payment_no:'receipt_no', customer:'customer_id', invoice:'invoice_no', applied_invoice:'invoice_no', applied_to_invoice:'invoice_no' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   paymentsMade: {
     filenames: ['payments_made','payment_made','payments_out','supplier_payments','vendor_payments'],
@@ -105,46 +81,34 @@ const DATASETS = {
     required: ['payment_no','supplier_id','payment_date','amount_paid'],
     numbers: ['amount_paid','discount_taken'],
     dates: ['payment_date'],
-<<<<<<< HEAD
     aliases: {
       payment:'payment_no', payment_id:'payment_no', transaction_id:'payment_no',
       vendor_id:'supplier_id', vendor:'supplier_id', supplier:'supplier_id', supplier_number:'supplier_id',
       amount:'amount_paid', payment_amount:'amount_paid', bill:'applied_to_bill', bill_number:'applied_to_bill', applied_bill:'applied_to_bill',
       date:'payment_date',
     },
-=======
-    aliases: { payment:'payment_no', vendor_id:'supplier_id', vendor:'supplier_id', supplier:'supplier_id', amount:'amount_paid', bill:'applied_to_bill', applied_bill:'applied_to_bill' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   products: {
     filenames: ['products','product','inventory','inventory_master','items'],
     key: row => row.sku,
     required: ['sku','name','supplier_id','wac','on_hand'],
     numbers: ['wac','reorder_point','safety_stock','on_hand','average_on_hand','sell_price','sales_60d','annual_sales','lead_time_days','lead_time_stddev','days_quiet'],
-<<<<<<< HEAD
     aliases: {
       product_sku:'sku', product_id:'sku', product_code:'sku', item:'sku', item_id:'sku', item_code:'sku',
       item_name:'name', product_name:'name', vendor_id:'supplier_id', vendor:'supplier_id', supplier:'supplier_id',
       qty_on_hand:'on_hand', quantity_on_hand:'on_hand', stock_on_hand:'on_hand', quantity:'on_hand',
       unit_cost:'wac', average_cost:'wac', avg_cost:'wac', cost:'wac', price:'sell_price', unit_price:'sell_price',
     },
-=======
-    aliases: { product_sku:'sku', item:'sku', item_name:'name', vendor_id:'supplier_id', vendor:'supplier_id', qty_on_hand:'on_hand', quantity_on_hand:'on_hand', unit_cost:'wac', price:'sell_price' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   bankAccounts: {
     filenames: ['bank_accounts','bank_account','cash_bank','cash_accounts'],
     key: row => row.account_id,
     required: ['account_id','name','balance'],
     numbers: ['balance'],
-<<<<<<< HEAD
     aliases: {
       account:'account_id', bank_account_id:'account_id', bank_account:'account_id', account_number:'account_id',
       account_name:'name', bank_name:'institution', current_balance:'balance', available_balance:'balance', amount:'balance',
     },
-=======
-    aliases: { account:'account_id', bank_account_id:'account_id', account_name:'name', current_balance:'balance' },
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   },
   companyMetrics: {
     filenames: ['company_metrics','metrics','calculation_inputs'],
@@ -179,7 +143,6 @@ function normalizeFilename(name='') {
   return String(name).toLowerCase().replace(/\.csv$/,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
 }
 
-<<<<<<< HEAD
 function hasValue(value) {
   return value !== null && value !== undefined && String(value).trim() !== '';
 }
@@ -213,8 +176,6 @@ function importId(prefix, sourceRow) {
   return `${prefix}-IMPORT-${String(sourceRow?._rowNumber || 1).padStart(4,'0')}`;
 }
 
-=======
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 export function parseCsv(text='') {
   const rows=[]; let row=[]; let field=''; let quoted=false;
   const src=String(text).replace(/^\uFEFF/,'');
@@ -250,11 +211,7 @@ export function parseCsv(text='') {
 }
 
 function parseNumber(value) {
-<<<<<<< HEAD
   if(value==null || String(value).trim()==='') return null;
-=======
-  if(value==null || value==='') return 0;
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   if(typeof value==='number') return Number.isFinite(value)?value:0;
   const raw=String(value).trim();
   const negative=/^\(.*\)$/.test(raw);
@@ -286,7 +243,6 @@ function canonicalizeRow(dataset, sourceRow) {
     if(key in row){ const n=parseNumber(row[key]); row[key]=n; }
   }
   for(const key of def.booleans || []) if(key in row) row[key]=parseBoolean(row[key]);
-<<<<<<< HEAD
   for(const key of def.dates || []) if(key in row) row[key]=normalizeDateValue(row[key]);
   if(dataset==='customers'){
     if(!hasValue(row.id)) row.id=importId('CUS',sourceRow);
@@ -319,9 +275,6 @@ function canonicalizeRow(dataset, sourceRow) {
     if(!hasValue(row.account_id)) row.account_id=importId('BANK',sourceRow);
     if(!hasValue(row.name)) row.name=row.account_name || row.institution || row.account_id;
   }
-=======
-  for(const key of def.dates || []) if(row[key]==='') row[key]=null;
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   if(dataset==='invoiceLines' && (!Number.isFinite(row.line_total) || row.line_total===0) && Number.isFinite(row.qty) && Number.isFinite(row.unit_price)) row.line_total=row.qty*row.unit_price;
   if(dataset==='paymentsReceived'){
     const invoiceNo=row.invoice_no || row.applied_to_invoice || '';
@@ -348,7 +301,6 @@ function detectDataset(filename, headers) {
     ['products',['sku','wac','on_hand']],['bankAccounts',['account_id','balance']],['customers',['customer_id','customer_name']],['suppliers',['supplier_id','supplier_name']],
   ];
   for(const [dataset,signature] of signatures) if(signature.every(h=>set.has(h))) return dataset;
-<<<<<<< HEAD
   // Flexible import: score partial/third-party headers against each dataset's
   // canonical fields and aliases instead of requiring the exact i2C template.
   const scored=Object.entries(DATASETS).map(([dataset,def])=>{
@@ -366,8 +318,6 @@ function detectDataset(filename, headers) {
     return {dataset,score};
   }).sort((a,b)=>b.score-a.score);
   if(scored[0]?.score>=2 && scored[0].score>Number(scored[1]?.score||0)) return scored[0].dataset;
-=======
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   return null;
 }
 
@@ -377,19 +327,11 @@ function validateDataset(dataset, rows) {
   const def=DATASETS[dataset]; const errors=[]; const warnings=[]; const seen=new Set();
   rows.forEach((row,index)=>{
     const rowNo=row._rowNumber || index+2;
-<<<<<<< HEAD
     for(const key of def.required || []) if(row[key]==null || row[key]==='') warnings.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} is missing; row was imported with available values.`);
     for(const key of def.numbers || []) if(key in row && row[key]!=null && !Number.isFinite(row[key])) warnings.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} is not numeric; calculations may treat it as unavailable.`);
     for(const key of def.dates || []) if(row[key] && !isIsoDate(row[key])) warnings.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} could not be normalized to YYYY-MM-DD; original value was retained.`);
     const key=def.key(row);
     if(key){ if(seen.has(key)) warnings.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: duplicate key ${key} was imported; review duplicate records.`); seen.add(key); }
-=======
-    for(const key of def.required || []) if(row[key]==null || row[key]==='') errors.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} is required.`);
-    for(const key of def.numbers || []) if(key in row && !Number.isFinite(row[key])) errors.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} must be numeric.`);
-    for(const key of def.dates || []) if(row[key] && !isIsoDate(row[key])) errors.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: ${key} must use YYYY-MM-DD.`);
-    const key=def.key(row);
-    if(key){ if(seen.has(key)) errors.push(`${CSV_DATASET_LABELS[dataset]} row ${rowNo}: duplicate key ${key}.`); seen.add(key); }
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   });
   if(!rows.length) warnings.push(`${CSV_DATASET_LABELS[dataset]} contains no data rows.`);
   return {errors,warnings};
@@ -437,23 +379,15 @@ function validateRelationships(workspace) {
   const receiptAlloc={};
   for(const receipt of workspace.paymentsReceived||[]) for(const allocation of receipt.applied_to||[]) receiptAlloc[allocation.invoice_no]=(receiptAlloc[allocation.invoice_no]||0)+Number(allocation.amount||0);
   for(const inv of workspace.invoices||[]){
-<<<<<<< HEAD
     const closed=statusClosesBalance(inv.status);
     const calculated=closed ? 0 : Math.max(0,Number(inv.total||0)-Number(receiptAlloc[inv.invoice_no]||0));
     if(hasValue(inv.balance_due) && Math.abs(calculated-Number(inv.balance_due||0))>0.02) errors.push(`Invoice ${inv.invoice_no}: calculated open balance is ${calculated.toFixed(2)}, while imported balance_due is ${Number(inv.balance_due||0).toFixed(2)}.`);
     if(hasValue(inv.balance_due) && Number(inv.balance_due||0)>0 && Number(inv.balance_due||0)<Number(inv.total||0) && !String(inv.status||'').toLowerCase().includes('partial')) errors.push(`Invoice ${inv.invoice_no}: imported balance is partial but status is not marked partial.`);
-=======
-    const calculated=Math.max(0,Number(inv.total||0)-Number(receiptAlloc[inv.invoice_no]||0));
-    if(Math.abs(calculated-Number(inv.balance_due||0))>0.02) errors.push(`Invoice ${inv.invoice_no}: total minus applied payments = ${calculated.toFixed(2)}, but balance_due is ${Number(inv.balance_due||0).toFixed(2)}.`);
-    if(Number(inv.balance_due||0)===0 && String(inv.status||'').toLowerCase()!=='paid') errors.push(`Invoice ${inv.invoice_no}: zero balance must have status paid.`);
-    if(Number(inv.balance_due||0)>0 && Number(inv.balance_due||0)<Number(inv.total||0) && !String(inv.status||'').toLowerCase().includes('partial')) errors.push(`Invoice ${inv.invoice_no}: partial balance must use a partial status.`);
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
   }
 
   const billPayments={};
   for(const payment of workspace.paymentsMade||[]) if(payment.applied_to_bill) billPayments[payment.applied_to_bill]=(billPayments[payment.applied_to_bill]||0)+Number(payment.amount_paid||0)+Number(payment.discount_taken||0);
   for(const bill of workspace.bills||[]){
-<<<<<<< HEAD
     const closed=statusClosesBalance(bill.status);
     const calculated=closed ? 0 : Math.max(0,Number(bill.total||0)-Number(billPayments[bill.bill_no]||0));
     if(hasValue(bill.balance_due) && Math.abs(calculated-Number(bill.balance_due||0))>0.02) errors.push(`Bill ${bill.bill_no}: calculated open balance is ${calculated.toFixed(2)}, while imported balance_due is ${Number(bill.balance_due||0).toFixed(2)}.`);
@@ -461,12 +395,6 @@ function validateRelationships(workspace) {
   // Relationship/schema problems are advisory for manual CSV entry. Preserve
   // available values and surface issues as warnings instead of rejecting.
   return {errors:[],warnings:[...warnings,...errors]};
-=======
-    const calculated=Math.max(0,Number(bill.total||0)-Number(billPayments[bill.bill_no]||0));
-    if(Math.abs(calculated-Number(bill.balance_due||0))>0.02) errors.push(`Bill ${bill.bill_no}: total minus payments/discounts = ${calculated.toFixed(2)}, but balance_due is ${Number(bill.balance_due||0).toFixed(2)}.`);
-  }
-  return {errors,warnings};
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 }
 
 export async function importCsvFiles(files, currentWorkspace) {
@@ -475,7 +403,6 @@ export async function importCsvFiles(files, currentWorkspace) {
     const text=typeof file.text==='function' ? await file.text() : String(file.text ?? '');
     const table=parseCsv(text);
     const dataset=detectDataset(file.name,table.headers);
-<<<<<<< HEAD
     if(!dataset){ warnings.push(`${file.name}: could not confidently identify a target dataset. File was skipped; other recognized CSVs were still imported.`); continue; }
     if(seenDatasets.has(dataset)) warnings.push(`${file.name}: another ${CSV_DATASET_LABELS[dataset]} file was included; rows were merged.`);
     seenDatasets.add(dataset);
@@ -489,21 +416,6 @@ export async function importCsvFiles(files, currentWorkspace) {
   parsed.forEach(item=>{ next[item.dataset]=DATASETS[item.dataset].singleObject ? (stripMetaRows(item.rows)[0] || {}) : stripMetaRows(item.rows); });
   const relationships=validateRelationships(next); errors.push(...relationships.errors); warnings.push(...relationships.warnings);
   if(errors.length) warnings.push(...errors.splice(0).map(e=>`Imported with warning: ${e}`));
-=======
-    if(!dataset){ errors.push(`${file.name}: could not identify dataset from filename/headers.`); continue; }
-    if(seenDatasets.has(dataset)){ errors.push(`${file.name}: duplicate ${CSV_DATASET_LABELS[dataset]} file in this upload.`); continue; }
-    seenDatasets.add(dataset);
-    const rows=table.rows.map(r=>canonicalizeRow(dataset,r));
-    const result=validateDataset(dataset,rows); errors.push(...result.errors.map(e=>`${file.name}: ${e}`)); warnings.push(...result.warnings.map(w=>`${file.name}: ${w}`));
-    parsed.push({fileName:file.name,dataset,rows});
-  }
-
-  if(errors.length) return {ok:false,errors,warnings,files:parsed,workspace:currentWorkspace};
-  const next=JSON.parse(JSON.stringify(currentWorkspace));
-  parsed.forEach(item=>{ next[item.dataset]=DATASETS[item.dataset].singleObject ? (stripMetaRows(item.rows)[0] || {}) : stripMetaRows(item.rows); });
-  const relationships=validateRelationships(next); errors.push(...relationships.errors); warnings.push(...relationships.warnings);
-  if(errors.length) return {ok:false,errors,warnings,files:parsed,workspace:currentWorkspace};
->>>>>>> 027bfafd2792fe6dc39ecb59aefe31d6db9d6ec9
 
   next.importMeta={
     source:'manual_csv',
