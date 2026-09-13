@@ -432,7 +432,9 @@ function normalizeBrightpearl(payload, syncedAt) {
         category: text(first(row, ['category', 'productGroupName'], 'Stock')),
         supplier_id: text(first(row, ['supplierId', 'defaultSupplierId', 'supplier.id'], '')),
         uom: text(first(row, ['uom', 'unitOfMeasure'], '')),
-        wac: number(first(row, ['weightedAverageCost', 'wac', 'averageCost', 'costPrice', '_inventory.weightedAverageCost', '_inventory.wac']), 0) || 0,
+        ...(number(first(row, ['weightedAverageCost', 'wac', 'averageCost', 'costPrice', '_inventory.weightedAverageCost', '_inventory.wac']), null) != null
+          ? { wac: number(first(row, ['weightedAverageCost', 'wac', 'averageCost', 'costPrice', '_inventory.weightedAverageCost', '_inventory.wac']), null) }
+          : {}),
         on_hand: number(first(row, ['onHand', 'quantityOnHand', 'stockOnHand', 'available', '_inventory.onHand', '_inventory.quantityOnHand', '_inventory.stockOnHand']), 0) || 0,
         average_on_hand: number(first(row, ['averageOnHand', 'average_on_hand']), null),
         sell_price: number(first(row, ['sellPrice', 'price', 'salesPrice']), null),
