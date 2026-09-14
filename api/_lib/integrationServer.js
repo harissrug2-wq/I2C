@@ -3,7 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 
 const QUICKBOOKS_AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';
 const QUICKBOOKS_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
-const QUICKBOOKS_API_BASE = 'https://quickbooks.api.intuit.com/v3/company';
+export function quickBooksApiBaseUrl() {
+  const environment = String(
+    process.env.QUICKBOOKS_ENVIRONMENT || 'production'
+  ).toLowerCase();
+
+  if (environment === 'sandbox' || environment === 'development') {
+    return 'https://sandbox-quickbooks.api.intuit.com/v3/company';
+  }
+
+  return 'https://quickbooks.api.intuit.com/v3/company';
+}
 const BRIGHTPEARL_TOKEN_BASE = 'https://oauth.brightpearlapp.com/token';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -314,7 +324,7 @@ export async function quickBooksQueryAll(secret, baseQuery, entityName, pageSize
   let startPosition = 1;
   while (true) {
     const query = `${baseQuery} STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`;
-    const url = `${QUICKBOOKS_API_BASE}/${encodeURIComponent(secret.realm_id)}/query?query=${encodeURIComponent(query)}`;
+    const url = `${quickBooksApiBaseUrl()}/${encodeURIComponent(secret.realm_id)}/query?query=${encodeURIComponent(query)}`;
     const json = await fetchJsonWithRetry(url, {
       headers: {
         Authorization: `Bearer ${secret.access_token}`,
