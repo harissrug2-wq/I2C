@@ -243,7 +243,7 @@ export default function AskAiModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-transparent"
+      className="fixed inset-0 z-50 flex justify-end bg-black/25 md:pointer-events-none md:bg-transparent"
       onMouseDown={event => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -252,7 +252,7 @@ export default function AskAiModal({ isOpen, onClose }) {
         role="dialog"
         aria-modal="false"
         aria-labelledby="ask-i2c-title"
-        className="flex h-dvh w-full max-w-[430px] flex-col border-l border-border bg-background shadow-[-16px_0_48px_rgba(15,23,42,0.16)]"
+        className="pointer-events-auto flex h-dvh w-full flex-col border-l border-border bg-background shadow-[-16px_0_48px_rgba(15,23,42,0.16)] md:w-[430px] md:max-w-[430px]"
       >
         <header className="flex items-center gap-3 border-b border-border bg-card px-5 py-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#701a75] text-white shadow-sm">

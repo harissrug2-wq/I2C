@@ -146,6 +146,17 @@ function AppContent() {
     }
   };
 
+  const openAskI2c = () => {
+    setIsSidebarOpen(false);
+    setIsAskAiOpen(true);
+  };
+
+  const closeAskI2c = () => {
+    setIsAskAiOpen(false);
+  };
+
+  const effectiveSidebarCollapsed = isSidebarCollapsed || isAskAiOpen;
+
   // Public standalone pages without dashboard sidebar/header wrapper
   if (activeTab === 'landing') {
     return <LandingPage onNavigate={handleTabChange} />;
@@ -233,19 +244,21 @@ function AppContent() {
         {/* Navigation Sidebar */}
         <Sidebar
           isOpen={isSidebarOpen}
-          isCollapsed={isSidebarCollapsed}
+          isCollapsed={effectiveSidebarCollapsed}
           onClose={() => setIsSidebarOpen(false)}
           activeTab={activeTab}
           setActiveTab={handleTabChange}
         />
 
         {/* Main Content Workspace */}
-        <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${isSidebarCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+        <div
+          className={`flex-1 flex flex-col min-w-0 transition-[margin,width] duration-300 ease-out ${effectiveSidebarCollapsed ? 'md:ml-16' : 'md:ml-64'} ${isAskAiOpen ? 'md:mr-[430px]' : 'md:mr-0'}`}
+        >
           {/* Header Bar */}
           <Header
             onToggleSidebar={toggleSidebar}
             onOpenSearch={() => setIsSearchOpen(true)}
-            onOpenAskAi={() => setIsAskAiOpen(true)}
+            onOpenAskAi={openAskI2c}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
@@ -272,7 +285,7 @@ function AppContent() {
       </div>
 
       {/* Interactive Modals */}
-      <AskAiModal isOpen={isAskAiOpen} onClose={() => setIsAskAiOpen(false)} />
+      <AskAiModal isOpen={isAskAiOpen} onClose={closeAskI2c} />
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
