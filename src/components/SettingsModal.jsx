@@ -34,7 +34,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           <div className="rounded-xl bg-[#0d9488]/10 p-4 border border-[#0d9488]/20 flex items-start gap-3">
             <ShieldCheck className="size-5 text-[#0d9488] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Calculation parameters update in real time and persist to this authenticated workspace. Threshold-change audit history remains a production hardening task.
+              Calculation parameters update in real time and persist to this authenticated workspace. Threshold changes are written to the workspace audit trail.
             </p>
           </div>
 

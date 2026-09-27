@@ -6,7 +6,8 @@ import { evaluateReceivablesRules } from '../domain/receivables';
 import { computePayablesModule, evaluatePayablesRules } from '../domain/payables';
 import { computeCrossDomainIntelligence } from '../domain/crossDomain';
 import { applyProviderSync, disconnectProvider, getIntegrationSummary } from '../domain/integrations';
-import { loadWorkspaceState, saveWorkspaceState } from '../domain/workspaceRepository';
+import { loadWorkspaceState, saveWorkspaceState, logAuditEvent, persistPredictionLogs, upsertMetricSnapshots } from '../domain/workspaceRepository';
+import { buildMetricSnapshots, buildPredictionRows } from '../domain/intelligenceHistory';
 import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
@@ -21,6 +22,13 @@ export function DataProvider({ children }) {
   const [saveStatus, setSaveStatus] = useState('idle');
   const hydratedRef = useRef(false);
   const saveTimerRef = useRef(null);
+  const thresholdsRef = useRef(thresholds);
+  const thresholdAuditRef = useRef(new Map());
+  const historyTimerRef = useRef(null);
+
+  useEffect(() => {
+    thresholdsRef.current = thresholds;
+  }, [thresholds]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -113,8 +121,56 @@ export function DataProvider({ children }) {
     return { sys1, sys2, sys3, sys4, sys5, crossDomain, advisories: [...phase1Advisories, ...receivablesAdvisories, ...payablesAdvisories, ...crossDomain.advisories] };
   }, [engine, thresholds, workspaceData]);
 
-  const updateThreshold = (key, value) => setThresholds(p => ({ ...p, [key]: Number(value) }));
-  const resetThresholds = () => setThresholds({ ...DEFAULT_THRESHOLDS });
+  const updateThreshold = (key, value) => {
+    const nextValue = Number(value);
+    const previousValue = thresholdsRef.current[key];
+    thresholdsRef.current = { ...thresholdsRef.current, [key]: nextValue };
+    setThresholds(prev => ({ ...prev, [key]: nextValue }));
+
+    if (!hydratedRef.current || !authUser?.id || !workspaceId || Number(previousValue) === nextValue) return;
+
+    const pending = thresholdAuditRef.current.get(key);
+    if (pending?.timer) clearTimeout(pending.timer);
+    const originalValue = pending ? pending.originalValue : previousValue;
+
+    const timer = setTimeout(async () => {
+      try {
+        await logAuditEvent({
+          userId: authUser.id,
+          workspaceId,
+          eventType: 'threshold_changed',
+          fieldName: key,
+          oldValue: originalValue,
+          newValue: nextValue,
+          reason: 'Workspace threshold updated from Rules & Thresholds settings.',
+        });
+      } catch (error) {
+        console.warn('Unable to write threshold audit event:', error);
+      } finally {
+        thresholdAuditRef.current.delete(key);
+      }
+    }, 700);
+
+    thresholdAuditRef.current.set(key, { originalValue, latestValue: nextValue, timer });
+  };
+
+  const resetThresholds = () => {
+    const previous = thresholdsRef.current;
+    const next = { ...DEFAULT_THRESHOLDS };
+    thresholdsRef.current = next;
+    setThresholds(next);
+
+    if (hydratedRef.current && authUser?.id && workspaceId) {
+      logAuditEvent({
+        userId: authUser.id,
+        workspaceId,
+        eventType: 'thresholds_reset',
+        oldValue: previous,
+        newValue: next,
+        reason: 'Workspace thresholds reset to defaults.',
+      }).catch(error => console.warn('Unable to write threshold reset audit event:', error));
+    }
+  };
   const logoutUser = () => signOut();
 
   const updateDataset = (key, next) => setWorkspaceData(prev => ({ ...prev, [key]: typeof next === 'function' ? next(prev[key]) : next }));
@@ -146,6 +202,43 @@ export function DataProvider({ children }) {
     workspaceData.bills?.length || workspaceData.products?.length || workspaceData.bankAccounts?.length ||
     workspaceData.paymentsReceived?.length || workspaceData.paymentsMade?.length
   );
+
+  useEffect(() => {
+    if (!hydratedRef.current || !authUser?.id || !workspaceId || !hasWorkspaceData) return;
+
+    if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+
+    historyTimerRef.current = setTimeout(async () => {
+      try {
+        const predictionRows = buildPredictionRows({
+          ownerId: authUser.id,
+          workspaceId,
+          advisories: computedData.advisories,
+          thresholds,
+          asOfDate: engine.asOfDate,
+          computedData,
+        });
+
+        const snapshots = buildMetricSnapshots({
+          ownerId: authUser.id,
+          workspaceId,
+          asOfDate: engine.asOfDate,
+          computedData,
+        });
+
+        await Promise.all([
+          persistPredictionLogs({ workspaceId, rows: predictionRows }),
+          upsertMetricSnapshots({ snapshots }),
+        ]);
+      } catch (error) {
+        console.warn('Unable to persist intelligence history:', error);
+      }
+    }, 900);
+
+    return () => {
+      if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    };
+  }, [authUser?.id, workspaceId, hasWorkspaceData, engine.asOfDate, computedData, thresholds]);
 
   const value = {
     user,
