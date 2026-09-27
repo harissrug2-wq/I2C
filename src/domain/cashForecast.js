@@ -1,3 +1,5 @@
+import { decimal, decimalMoney, decimalNumber, decimalSum, decimalWholeMoney } from './decimalMath.js';
+
 const DAY_MS = 86400000;
 
 const money = value => Math.round(Number(value || 0));
@@ -79,7 +81,7 @@ export function computeCashForecastModule(
       expectedPayDate,
       baselineLateDays,
       collectionProbability: probability,
-      riskAdjustedAmount: round2(Number(invoice.balanceDue || 0) * probability),
+      riskAdjustedAmount: decimalMoney(decimal(invoice.balanceDue || 0).times(probability)),
     };
   });
 
@@ -93,18 +95,18 @@ export function computeCashForecastModule(
   // inflows, evenly distributed because no individual dates are supplied.
   const baselineOtherOutflows60d = Number(metrics.forecastBaselineOtherOutflows60d || 0);
   const baselineOtherInflows60d = Number(metrics.forecastBaselineOtherInflows60d || 0);
-  const recurringDailyOutflow = baselineOtherOutflows60d > 0 ? baselineOtherOutflows60d / 60 : 0;
-  const baselineDailyInflow = baselineOtherInflows60d > 0 ? baselineOtherInflows60d / 60 : 0;
+  const recurringDailyOutflow = baselineOtherOutflows60d > 0 ? decimalNumber(decimal(baselineOtherOutflows60d).div(60)) : 0;
+  const baselineDailyInflow = baselineOtherInflows60d > 0 ? decimalNumber(decimal(baselineOtherInflows60d).div(60)) : 0;
 
-  let runningCash = Number(cashBalance || 0);
-  let invoiceInflows = 0;
-  let baselineInflows = 0;
-  let billOutflows = 0;
-  let recurringOutflows = 0;
+  let runningCash = decimal(cashBalance || 0);
+  let invoiceInflows = decimal(0);
+  let baselineInflows = decimal(0);
+  let billOutflows = decimal(0);
+  let recurringOutflows = decimal(0);
   const points = [];
 
   let lowPoint = {
-    cash: money(runningCash),
+    cash: decimalWholeMoney(runningCash),
     date: asOfDate,
     day: dayLabel(asOfDate),
     daysOut: 0,
@@ -112,47 +114,52 @@ export function computeCashForecastModule(
 
   for (let day = 0; day <= horizonDays; day += 1) {
     const date = addDays(asOfDate, day);
-    const invoiceInflow = scheduledInvoices
-      .filter(invoice => invoice.expectedPayDate === date)
-      .reduce((sum, invoice) => sum + invoice.riskAdjustedAmount, 0);
-    const billOutflow = scheduledBills
-      .filter(bill => bill.projectedPayDate === date)
-      .reduce((sum, bill) => sum + Number(bill.balanceDue || 0), 0);
+    const invoiceInflow = decimalSum(
+      scheduledInvoices
+        .filter(invoice => invoice.expectedPayDate === date)
+        .map(invoice => invoice.riskAdjustedAmount)
+    );
+    const billOutflow = decimalSum(
+      scheduledBills
+        .filter(bill => bill.projectedPayDate === date)
+        .map(bill => bill.balanceDue || 0)
+    );
 
-    const otherInflow = baselineDailyInflow;
-    const recurringOutflow = recurringDailyOutflow;
-    const totalInflow = invoiceInflow + otherInflow;
-    const totalOutflow = billOutflow + recurringOutflow;
+    const otherInflow = decimal(baselineDailyInflow);
+    const recurringOutflow = decimal(recurringDailyOutflow);
+    const totalInflow = invoiceInflow.plus(otherInflow);
+    const totalOutflow = billOutflow.plus(recurringOutflow);
 
-    runningCash += totalInflow - totalOutflow;
-    invoiceInflows += invoiceInflow;
-    baselineInflows += otherInflow;
-    billOutflows += billOutflow;
-    recurringOutflows += recurringOutflow;
+    runningCash = runningCash.plus(totalInflow).minus(totalOutflow);
+    invoiceInflows = invoiceInflows.plus(invoiceInflow);
+    baselineInflows = baselineInflows.plus(otherInflow);
+    billOutflows = billOutflows.plus(billOutflow);
+    recurringOutflows = recurringOutflows.plus(recurringOutflow);
 
-    const timingUncertainty = scheduledInvoices
-      .filter(invoice => Math.abs(diffDays(invoice.expectedPayDate, date)) <= 7)
-      .reduce((sum, invoice) => {
-        const stddev = Number(invoice.customerStdDevDaysLate || 0);
-        return sum + Number(invoice.balanceDue || 0) * (stddev / 30) * confidenceFactor;
-      }, 0);
-    const horizonWidening = 1 + (day / Math.max(1, horizonDays)) * 0.25;
-    const confidenceWidth = timingUncertainty * horizonWidening;
+    const timingUncertainty = decimalSum(
+      scheduledInvoices
+        .filter(invoice => Math.abs(diffDays(invoice.expectedPayDate, date)) <= 7)
+        .map(invoice => decimal(invoice.balanceDue || 0)
+          .times(decimal(invoice.customerStdDevDaysLate || 0).div(30))
+          .times(confidenceFactor))
+    );
+    const horizonWidening = decimal(1).plus(decimal(day).div(Math.max(1, horizonDays)).times(0.25));
+    const confidenceWidth = timingUncertainty.times(horizonWidening);
 
-    const cash = money(runningCash);
+    const cash = decimalWholeMoney(runningCash);
     const point = {
       date,
       day: dayLabel(date),
       daysOut: day,
       cash,
-      bandLow: money(runningCash - confidenceWidth),
-      bandHigh: money(runningCash + confidenceWidth),
-      expectedInflow: money(totalInflow),
-      expectedOutflow: money(totalOutflow),
-      invoiceInflow: money(invoiceInflow),
-      baselineInflow: money(otherInflow),
-      billOutflow: money(billOutflow),
-      recurringOutflow: money(recurringOutflow),
+      bandLow: decimalWholeMoney(runningCash.minus(confidenceWidth)),
+      bandHigh: decimalWholeMoney(runningCash.plus(confidenceWidth)),
+      expectedInflow: decimalWholeMoney(totalInflow),
+      expectedOutflow: decimalWholeMoney(totalOutflow),
+      invoiceInflow: decimalWholeMoney(invoiceInflow),
+      baselineInflow: decimalWholeMoney(otherInflow),
+      billOutflow: decimalWholeMoney(billOutflow),
+      recurringOutflow: decimalWholeMoney(recurringOutflow),
     };
     points.push(point);
 
@@ -161,15 +168,17 @@ export function computeCashForecastModule(
     }
   }
 
-  const totalInflows = invoiceInflows + baselineInflows;
-  const totalOutflows = billOutflows + recurringOutflows;
-  const endingCash = points.at(-1)?.cash ?? money(cashBalance);
+  const totalInflows = invoiceInflows.plus(baselineInflows);
+  const totalOutflows = billOutflows.plus(recurringOutflows);
+  const endingCash = points.at(-1)?.cash ?? decimalWholeMoney(cashBalance);
   const actual60Inflows = Number(metrics.actualInflows60d || 0);
   const actual60Outflows = Number(metrics.actualOutflows60d || 0);
-  const rawBurnRate = (actual60Outflows - actual60Inflows) / 60;
-  const burnRateDaily = rawBurnRate > 0 ? rawBurnRate : 0;
-  const runwayDays = burnRateDaily > 0 ? Math.floor(Number(cashBalance || 0) / burnRateDaily) : 9999;
-  const coverageRatio = totalOutflows > 0 ? (Number(cashBalance || 0) + totalInflows) / totalOutflows : 99;
+  const rawBurnRate = decimal(actual60Outflows).minus(actual60Inflows).div(60);
+  const burnRateDaily = rawBurnRate.isPositive() ? rawBurnRate : decimal(0);
+  const runwayDays = burnRateDaily.isPositive() ? decimal(cashBalance || 0).div(burnRateDaily).floor().toNumber() : 9999;
+  const coverageRatio = totalOutflows.isPositive()
+    ? decimalNumber(decimal(cashBalance || 0).plus(totalInflows).div(totalOutflows))
+    : 99;
   const operatingFloor = Number(thresholds.operating_cash_floor || 0);
   const floorGap = Math.max(0, operatingFloor - lowPoint.cash);
   const firstNegative = points.find(point => point.cash < 0) || null;
@@ -208,15 +217,15 @@ export function computeCashForecastModule(
     lowPointDaysOut: lowPoint.daysOut,
     floorGap: money(floorGap),
     operatingFloor: money(operatingFloor),
-    invoiceInflows: money(invoiceInflows),
-    baselineInflows: money(baselineInflows),
-    inflow30d: money(totalInflows),
-    billOutflows: money(billOutflows),
-    recurringOutflows: money(recurringOutflows),
-    outflow30d: money(totalOutflows),
-    netMovement: money(totalInflows - totalOutflows),
+    invoiceInflows: decimalWholeMoney(invoiceInflows),
+    baselineInflows: decimalWholeMoney(baselineInflows),
+    inflow30d: decimalWholeMoney(totalInflows),
+    billOutflows: decimalWholeMoney(billOutflows),
+    recurringOutflows: decimalWholeMoney(recurringOutflows),
+    outflow30d: decimalWholeMoney(totalOutflows),
+    netMovement: decimalWholeMoney(totalInflows.minus(totalOutflows)),
     coverageRatio: round2(coverageRatio),
-    burnRateDaily: money(burnRateDaily),
+    burnRateDaily: decimalWholeMoney(burnRateDaily),
     runwayDays,
     runwayLabel: runwayDays >= 9999 ? 'Cash generating / no finite runway' : `${runwayDays} days`,
     firstNegative,
