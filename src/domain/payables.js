@@ -11,6 +11,8 @@
  * - Does NOT perform AR→AP chained optimization; that remains Module 6 (Cross Domain Intelligence).
  */
 
+import { decimal, decimalMoney, decimalNumber, decimalSum, decimalWholeMoney } from './decimalMath.js';
+
 const DAY_MS = 86400000;
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n || 0)));
 const round1 = n => Math.round(Number(n || 0) * 10) / 10;
@@ -69,11 +71,15 @@ export function payablesAgingBucket(daysToDue, daysOverdue = 0) {
 }
 
 export function discountAPR(discountPercent, discountDays, netDays) {
-  const pct = Number(discountPercent || 0);
-  const dDays = Number(discountDays || 0);
-  const nDays = Number(netDays || 0);
-  if (pct <= 0 || pct >= 100 || nDays <= dDays) return 0;
-  return (pct / (100 - pct)) * (365 / (nDays - dDays));
+  const pct = decimal(discountPercent || 0);
+  const dDays = decimal(discountDays || 0);
+  const nDays = decimal(netDays || 0);
+  if (!pct.isPositive() || pct.greaterThanOrEqualTo(100) || nDays.lessThanOrEqualTo(dDays)) return 0;
+  return decimalNumber(
+    pct.div(decimal(100).minus(pct))
+      .times(decimal(365).div(nDays.minus(dDays))),
+    12,
+  );
 }
 
 function supplierForBill(bill, vendorById) {
@@ -140,9 +146,11 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
 
     // `discount_available` is an explicit imported source field in the canonical
     // dataset. We respect that field rather than inferring an offer solely from terms.
-    const discountSavings = Number(bill.discountAvailable || 0);
-    const derivedPercent = Number(bill.balanceDue || 0) > 0
-      ? (discountSavings / Number(bill.balanceDue)) * 100
+    const discountSavingsDecimal = decimal(bill.discountAvailable || 0);
+    const discountSavings = decimalNumber(discountSavingsDecimal);
+    const balanceDueDecimal = decimal(bill.balanceDue || 0);
+    const derivedPercent = balanceDueDecimal.isPositive()
+      ? decimalNumber(discountSavingsDecimal.div(balanceDueDecimal).times(100), 8)
       : 0;
     const effectiveDiscountPercent = Number(bill.discountPercent || 0) > 0
       ? Number(bill.discountPercent)
@@ -157,7 +165,7 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
       supplier: vendor,
       daysToDue,
       agingBucket: bucket,
-      discountSavings: money(discountSavings),
+      discountSavings: decimalWholeMoney(discountSavingsDecimal),
       effectiveDiscountPercent: round2(effectiveDiscountPercent),
       discountAPR: round4(apr),
       discountAPRPercent: round1(apr * 100),
@@ -173,25 +181,35 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
     return { ...base, ...operationalPriority(base) };
   });
 
-  const agingBuckets = emptyAging();
+  const agingBucketDecimals = Object.fromEntries(AP_AGING_BUCKETS.map(bucket => [bucket, decimal(0)]));
   detailedBills.forEach(bill => {
-    agingBuckets[bill.agingBucket] += Number(bill.balanceDue || 0);
+    agingBucketDecimals[bill.agingBucket] = agingBucketDecimals[bill.agingBucket].plus(bill.balanceDue || 0);
   });
-  const totalAPExact = detailedBills.reduce((sum, bill) => sum + Number(bill.balanceDue || 0), 0);
-  const agingTotal = Object.values(agingBuckets).reduce((sum, value) => sum + value, 0);
+  const agingBuckets = Object.fromEntries(
+    Object.entries(agingBucketDecimals).map(([bucket, value]) => [bucket, decimalNumber(value)])
+  );
+  const totalAPExactDecimal = decimalSum(detailedBills.map(bill => bill.balanceDue || 0));
+  const totalAPExact = decimalNumber(totalAPExactDecimal);
+  const agingTotalDecimal = decimalSum(Object.values(agingBucketDecimals));
+  const agingTotal = decimalNumber(agingTotalDecimal);
 
   const supplierRows = vendors.map(vendor => {
     const vendorBills = detailedBills.filter(bill => bill.supplierId === vendor.id);
-    const buckets = emptyAging();
-    vendorBills.forEach(bill => { buckets[bill.agingBucket] += Number(bill.balanceDue || 0); });
+    const bucketDecimals = Object.fromEntries(AP_AGING_BUCKETS.map(bucket => [bucket, decimal(0)]));
+    vendorBills.forEach(bill => {
+      bucketDecimals[bill.agingBucket] = bucketDecimals[bill.agingBucket].plus(bill.balanceDue || 0);
+    });
+    const buckets = Object.fromEntries(
+      Object.entries(bucketDecimals).map(([bucket, value]) => [bucket, decimalNumber(value)])
+    );
     return {
       ...vendor,
       openBillCount: vendorBills.length,
-      apBalance: money(vendorBills.reduce((sum, bill) => sum + Number(bill.balanceDue || 0), 0)),
+      apBalance: decimalWholeMoney(decimalSum(vendorBills.map(bill => bill.balanceDue || 0))),
       agingBuckets: Object.fromEntries(Object.entries(buckets).map(([key, value]) => [key, money(value)])),
       nextDueDate: [...vendorBills].sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))[0]?.dueDate || null,
       pastDueAmount: money(buckets['Past Due']),
-      discountAvailable: money(vendorBills.reduce((sum, bill) => sum + Number(bill.discountSavings || 0), 0)),
+      discountAvailable: decimalWholeMoney(decimalSum(vendorBills.map(bill => bill.discountSavings || 0))),
     };
   });
 
@@ -206,9 +224,10 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
     .filter(bill => Number(bill.discountSavings || 0) > 0)
     .sort((a, b) => Number(b.discountAPR || 0) - Number(a.discountAPR || 0));
 
-  const totalDiscountSavings = discountOpportunities.reduce((sum, bill) => sum + Number(bill.discountSavings || 0), 0);
-  const totalDiscountCandidateSavings = discountOpportunities.filter(bill => bill.discountCandidate)
-    .reduce((sum, bill) => sum + Number(bill.discountSavings || 0), 0);
+  const totalDiscountSavings = decimalSum(discountOpportunities.map(bill => bill.discountSavings || 0));
+  const totalDiscountCandidateSavings = decimalSum(
+    discountOpportunities.filter(bill => bill.discountCandidate).map(bill => bill.discountSavings || 0)
+  );
 
   const paymentHistory = supplierRows.reduce((acc, supplier) => {
     acc.paymentCount += Number(supplier.paymentHistoryCount || 0);
@@ -233,7 +252,7 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
   return {
     modelVersion: PAYABLES_MODEL_VERSION,
     asOfDate,
-    totalAP: money(totalAPExact),
+    totalAP: decimalWholeMoney(totalAPExactDecimal),
     openBillCount: detailedBills.length,
     bills: detailedBills,
     suppliers: supplierRows,
@@ -241,15 +260,15 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
     aging: {
       buckets: Object.fromEntries(Object.entries(agingBuckets).map(([key, value]) => [key, money(value)])),
       total: money(agingTotal),
-      reconciliationDelta: round2(agingTotal - totalAPExact),
-      reconciled: Math.abs(agingTotal - totalAPExact) < 0.01,
+      reconciliationDelta: decimalMoney(agingTotalDecimal.minus(totalAPExactDecimal)),
+      reconciled: agingTotalDecimal.minus(totalAPExactDecimal).abs().lessThan(0.01),
     },
-    pastDueAmount: money(pastDueBills.reduce((sum, bill) => sum + Number(bill.balanceDue || 0), 0)),
+    pastDueAmount: decimalWholeMoney(decimalSum(pastDueBills.map(bill => bill.balanceDue || 0))),
     pastDueBillCount: pastDueBills.length,
     dueWithin15Amount: money(agingBuckets['0-15']),
     discountOpportunities,
-    totalDiscountSavings: money(totalDiscountSavings),
-    totalDiscountCandidateSavings: money(totalDiscountCandidateSavings),
+    totalDiscountSavings: decimalWholeMoney(totalDiscountSavings),
+    totalDiscountCandidateSavings: decimalWholeMoney(totalDiscountCandidateSavings),
     highestExposureSupplier,
     paymentHistory: {
       ...paymentHistory,
