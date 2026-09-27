@@ -274,6 +274,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   // summing individually rounded invoice ECL values to $4,087.87).
   const totalECLDecimal = decimalSum(detailedInvoices.map(inv => inv.eclExact ?? inv.ecl ?? 0));
   const totalECL = decimalNumber(totalECLDecimal);
+  const collectibleARDecimal = totalARExactDecimal.minus(totalECLDecimal);
 
   const collectionQueue = [...customersWithECL]
     .filter(c => Number(c.balance || 0) > 0)
@@ -370,7 +371,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     invoiceCollectionQueue,
     badDebtCandidates,
     totalECL: decimalMoney(totalECLDecimal),
-    collectibleAR: decimalMoney(decimal(totalARExactDecimal).minus(totalECLDecimal).max(0)),
+    collectibleAR: decimalMoney(collectibleARDecimal.isNegative() ? 0 : collectibleARDecimal),
     moneyAtRisk: money(detailedInvoices.filter(i => i.payScore >= 60 || i.daysOverdue > 60).reduce((s, i) => s + Number(i.balanceDue || 0), 0)),
     highestECLInvoice,
     highestRiskCustomer,
