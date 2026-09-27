@@ -6,8 +6,9 @@ import { evaluateReceivablesRules } from '../domain/receivables';
 import { computePayablesModule, evaluatePayablesRules } from '../domain/payables';
 import { computeCrossDomainIntelligence } from '../domain/crossDomain';
 import { applyProviderSync, disconnectProvider, getIntegrationSummary } from '../domain/integrations';
-import { loadWorkspaceState, saveWorkspaceState, logAuditEvent, persistPredictionLogs, upsertMetricSnapshots } from '../domain/workspaceRepository';
+import { loadWorkspaceState, saveWorkspaceState, logAuditEvent, persistPredictionLogs, upsertMetricSnapshots, loadRuleOverrides, saveRuleOverride, deleteRuleOverride } from '../domain/workspaceRepository';
 import { buildMetricSnapshots, buildPredictionRows } from '../domain/intelligenceHistory';
+import { applyRuleOverrides, buildEffectiveThresholds, normalizeRuleOverride } from '../domain/ruleOverrides';
 import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
@@ -20,6 +21,8 @@ export function DataProvider({ children }) {
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [ruleOverrides, setRuleOverrides] = useState([]);
+  const [ruleOverrideStatus, setRuleOverrideStatus] = useState('idle');
   const hydratedRef = useRef(false);
   const saveTimerRef = useRef(null);
   const thresholdsRef = useRef(thresholds);
@@ -41,6 +44,8 @@ export function DataProvider({ children }) {
       setWorkspaceLoading(false);
       setWorkspaceError('');
       setSaveStatus('idle');
+      setRuleOverrides([]);
+      setRuleOverrideStatus('idle');
       return;
     }
 
@@ -50,11 +55,15 @@ export function DataProvider({ children }) {
     setWorkspaceError('');
 
     loadWorkspaceState(authUser.id)
-      .then(row => {
+      .then(async row => {
+        if (cancelled) return;
+        const overrides = await loadRuleOverrides({ userId: authUser.id, workspaceId: row.workspace_id });
         if (cancelled) return;
         setWorkspaceId(row.workspace_id);
         setWorkspaceData(row.data && typeof row.data === 'object' ? row.data : createEmptyWorkspaceData());
         setThresholds({ ...DEFAULT_THRESHOLDS, ...(row.thresholds || {}) });
+        setRuleOverrides(overrides);
+        setRuleOverrideStatus('saved');
         setSaveStatus('saved');
         hydratedRef.current = true;
       })
@@ -96,15 +105,16 @@ export function DataProvider({ children }) {
   }, [workspaceData, thresholds, authUser?.id, workspaceId]);
 
   const engine = useMemo(() => buildEngineInputs(workspaceData), [workspaceData]);
+  const effectiveThresholds = useMemo(() => buildEffectiveThresholds(thresholds, ruleOverrides), [thresholds, ruleOverrides]);
   const integrationSummary = useMemo(() => getIntegrationSummary(workspaceData), [workspaceData]);
   const computedData = useMemo(() => {
-    const sys1 = computeSystem1(engine.cashBalance, engine.invoices, engine.products, engine.bills, engine.metrics, thresholds);
-    const sys2 = computeSystem2(engine.products, thresholds);
-    const sys4Base = computeSystem4(engine.customers, engine.invoices, engine.bills, engine.vendors, thresholds);
+    const sys1 = computeSystem1(engine.cashBalance, engine.invoices, engine.products, engine.bills, engine.metrics, effectiveThresholds);
+    const sys2 = computeSystem2(engine.products, effectiveThresholds);
+    const sys4Base = computeSystem4(engine.customers, engine.invoices, engine.bills, engine.vendors, effectiveThresholds);
     const payScoreByCustomer = new Map(sys4Base.collectionQueue.map(c => [c.id, c.payScore]));
     const cashInvoices = engine.invoices.map(i => ({ ...i, riskScore: payScoreByCustomer.get(i.customerId) ?? i.riskScore }));
-    const sys3 = computeSystem3(engine.cashBalance, cashInvoices, engine.bills, engine.metrics, engine.asOfDate, thresholds);
-    const payables = computePayablesModule(engine.bills, engine.vendors, engine.cashBalance, thresholds);
+    const sys3 = computeSystem3(engine.cashBalance, cashInvoices, engine.bills, engine.metrics, engine.asOfDate, effectiveThresholds);
+    const payables = computePayablesModule(engine.bills, engine.vendors, engine.cashBalance, effectiveThresholds);
     const sys4 = {
       ...sys4Base,
       payables,
@@ -113,13 +123,14 @@ export function DataProvider({ children }) {
       discountOpportunities: payables.discountOpportunities.map(d => ({ ...d, savings: d.discountSavings, isProfitableToTake: d.aprQualified })),
       totalDiscountSavings: payables.totalDiscountSavings,
     };
-    const sys5 = computeSystem5(engine.products, engine.customers, engine.vendors, thresholds);
-    const crossDomain = computeCrossDomainIntelligence({ workspace: workspaceData, sys1, sys2, sys3, sys4, thresholds });
-    const phase1Advisories = evaluateRules(sys1, sys2, sys3, sys4, sys5, thresholds);
+    const sys5 = computeSystem5(engine.products, engine.customers, engine.vendors, effectiveThresholds);
+    const crossDomain = computeCrossDomainIntelligence({ workspace: workspaceData, sys1, sys2, sys3, sys4, thresholds: effectiveThresholds });
+    const phase1Advisories = evaluateRules(sys1, sys2, sys3, sys4, sys5, effectiveThresholds);
     const receivablesAdvisories = evaluateReceivablesRules(sys4.receivables || sys4);
-    const payablesAdvisories = evaluatePayablesRules(payables, sys3, thresholds, { includeAP002: false, includeAP003: false, includeAP004: false });
-    return { sys1, sys2, sys3, sys4, sys5, crossDomain, advisories: [...phase1Advisories, ...receivablesAdvisories, ...payablesAdvisories, ...crossDomain.advisories] };
-  }, [engine, thresholds, workspaceData]);
+    const payablesAdvisories = evaluatePayablesRules(payables, sys3, effectiveThresholds, { includeAP002: false, includeAP003: false, includeAP004: false });
+    const advisories = applyRuleOverrides([...phase1Advisories, ...receivablesAdvisories, ...payablesAdvisories, ...crossDomain.advisories], ruleOverrides);
+    return { sys1, sys2, sys3, sys4, sys5, crossDomain, advisories };
+  }, [engine, effectiveThresholds, workspaceData, ruleOverrides]);
 
   const updateThreshold = (key, value) => {
     const nextValue = Number(value);
@@ -171,6 +182,78 @@ export function DataProvider({ children }) {
       }).catch(error => console.warn('Unable to write threshold reset audit event:', error));
     }
   };
+  const upsertRuleOverride = async input => {
+    if (!authUser?.id || !workspaceId) throw new Error('Authenticated workspace is not available.');
+    const normalized = normalizeRuleOverride(input);
+    if (!normalized.rule_id) throw new Error('Rule ID is required.');
+
+    setRuleOverrideStatus('saving');
+    try {
+      const saved = await saveRuleOverride({
+        userId: authUser.id,
+        workspaceId,
+        override: { ...normalized, id: input.id || null },
+      });
+
+      setRuleOverrides(prev => {
+        const exists = prev.some(row => row.id === saved.id);
+        return exists ? prev.map(row => row.id === saved.id ? saved : row) : [saved, ...prev];
+      });
+
+      await logAuditEvent({
+        userId: authUser.id,
+        workspaceId,
+        eventType: input.id ? 'rule_override_updated' : 'rule_override_created',
+        ruleId: saved.rule_id,
+        entityType: saved.entity_type,
+        entityId: saved.entity_id,
+        newValue: {
+          threshold_key: saved.threshold_key,
+          threshold_value: saved.threshold_value,
+          suppressed: saved.suppressed,
+        },
+        reason: saved.override_reason || 'Rule override changed.',
+      });
+
+      setRuleOverrideStatus('saved');
+      return saved;
+    } catch (error) {
+      setRuleOverrideStatus('error');
+      throw error;
+    }
+  };
+
+  const removeRuleOverride = async id => {
+    const existing = ruleOverrides.find(row => row.id === id);
+    if (!existing || !authUser?.id || !workspaceId) return;
+
+    setRuleOverrideStatus('saving');
+    try {
+      await deleteRuleOverride({ userId: authUser.id, workspaceId, id });
+      setRuleOverrides(prev => prev.filter(row => row.id !== id));
+
+      await logAuditEvent({
+        userId: authUser.id,
+        workspaceId,
+        eventType: 'rule_override_deleted',
+        ruleId: existing.rule_id,
+        entityType: existing.entity_type,
+        entityId: existing.entity_id,
+        oldValue: {
+          threshold_key: existing.threshold_key,
+          threshold_value: existing.threshold_value,
+          suppressed: existing.suppressed,
+        },
+        reason: existing.override_reason || 'Rule override removed.',
+      });
+
+      setRuleOverrideStatus('saved');
+    } catch (error) {
+      setRuleOverrideStatus('error');
+      throw error;
+    }
+  };
+
   const logoutUser = () => signOut();
 
   const updateDataset = (key, next) => setWorkspaceData(prev => ({ ...prev, [key]: typeof next === 'function' ? next(prev[key]) : next }));
@@ -214,7 +297,7 @@ export function DataProvider({ children }) {
           ownerId: authUser.id,
           workspaceId,
           advisories: computedData.advisories,
-          thresholds,
+          thresholds: effectiveThresholds,
           asOfDate: engine.asOfDate,
           computedData,
         });
@@ -238,7 +321,7 @@ export function DataProvider({ children }) {
     return () => {
       if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
     };
-  }, [authUser?.id, workspaceId, hasWorkspaceData, engine.asOfDate, computedData, thresholds]);
+  }, [authUser?.id, workspaceId, hasWorkspaceData, engine.asOfDate, computedData, effectiveThresholds]);
 
   const value = {
     user,
@@ -250,6 +333,11 @@ export function DataProvider({ children }) {
     workspaceError,
     saveStatus,
     thresholds,
+    effectiveThresholds,
+    ruleOverrides,
+    ruleOverrideStatus,
+    upsertRuleOverride,
+    removeRuleOverride,
     updateThreshold,
     resetThresholds,
     workspaceData,
