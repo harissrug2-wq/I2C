@@ -7,17 +7,20 @@ function asScalar(value) {
 
 export function buildEffectiveThresholds(baseThresholds = {}, overrides = []) {
   const next = { ...baseThresholds };
+  const applied = new Set();
 
+  // Repository rows are newest-first. The newest workspace-wide override wins.
   for (const override of overrides || []) {
     if (!override || override.suppressed) continue;
     if (override.entity_id != null) continue;
-    if (!override.threshold_key) continue;
+    if (!override.threshold_key || applied.has(override.threshold_key)) continue;
 
     const value = asScalar(override.threshold_value);
     if (value == null) continue;
 
     const numeric = Number(value);
     next[override.threshold_key] = Number.isFinite(numeric) ? numeric : value;
+    applied.add(override.threshold_key);
   }
 
   return next;
