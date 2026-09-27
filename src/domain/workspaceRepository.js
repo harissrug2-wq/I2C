@@ -97,3 +97,71 @@ export async function upsertMetricSnapshots({ snapshots = [] }) {
 
   if (error) throw error;
 }
+
+
+export async function loadRuleOverrides({ userId, workspaceId }) {
+  if (!supabase || !userId || !workspaceId) return [];
+
+  const { data, error } = await supabase
+    .from('rule_overrides')
+    .select('id,rule_id,entity_type,entity_id,threshold_key,threshold_value,suppressed,override_reason,created_at,updated_at')
+    .eq('workspace_id', workspaceId)
+    .eq('owner_id', userId)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function saveRuleOverride({ userId, workspaceId, override }) {
+  if (!supabase || !userId || !workspaceId) throw new Error('Authenticated workspace is not available.');
+
+  const payload = {
+    workspace_id: workspaceId,
+    owner_id: userId,
+    rule_id: override.rule_id,
+    entity_type: override.entity_type,
+    entity_id: override.entity_id,
+    threshold_key: override.threshold_key,
+    threshold_value: override.threshold_value,
+    suppressed: Boolean(override.suppressed),
+    override_reason: override.override_reason || '',
+    created_by: userId,
+  };
+
+  if (override.id) {
+    const { data, error } = await supabase
+      .from('rule_overrides')
+      .update(payload)
+      .eq('id', override.id)
+      .eq('workspace_id', workspaceId)
+      .eq('owner_id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from('rule_overrides')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRuleOverride({ userId, workspaceId, id }) {
+  if (!supabase || !userId || !workspaceId || !id) return;
+
+  const { error } = await supabase
+    .from('rule_overrides')
+    .delete()
+    .eq('id', id)
+    .eq('workspace_id', workspaceId)
+    .eq('owner_id', userId);
+
+  if (error) throw error;
+}
