@@ -61,6 +61,15 @@ export const INTEGRATION_PROVIDERS = Object.freeze({
     datasets: ['products', 'suppliers', 'invoiceLines'],
     description: 'Inventory source for SKU master, on-hand stock, cost and related item data.',
   },
+  google_sheets: {
+    id: 'google_sheets',
+    name: 'Google Sheets',
+    category: 'Spreadsheet',
+    authMode: 'oauth2-server',
+    serverOnlySecrets: true,
+    datasets: [...CANONICAL_DATASETS, 'companyMetrics'],
+    description: 'Dynamic spreadsheet source with per-tab and per-column mapping into the canonical i2C workspace.',
+  },
 });
 
 const DATASET_KEYS = Object.freeze({
@@ -407,6 +416,45 @@ function mergeBrightpearlInventory(products, inventory) {
   });
 }
 
+function normalizeGoogleSheets(payload, syncedAt) {
+  const warnings = [];
+  const datasets = {};
+  const presentDatasets = new Set();
+
+  for (const dataset of [...CANONICAL_DATASETS, 'companyMetrics']) {
+    if (!hasOwn(payload, dataset)) continue;
+    presentDatasets.add(dataset);
+
+    if (dataset === 'companyMetrics') {
+      datasets.companyMetrics = payload.companyMetrics && typeof payload.companyMetrics === 'object'
+        ? { ...payload.companyMetrics }
+        : {};
+      continue;
+    }
+
+    const rows = Array.isArray(payload[dataset]) ? payload[dataset] : [];
+    const keyFn = DATASET_KEYS[dataset];
+    datasets[dataset] = rows.map((row, idx) => {
+      const canonical = row && typeof row === 'object' ? { ...row } : null;
+      if (!canonical) {
+        warnings.push(`Google Sheets ${dataset} row ${idx + 1} skipped: invalid row.`);
+        return null;
+      }
+      const key = keyFn?.(canonical);
+      if (!key) {
+        warnings.push(`Google Sheets ${dataset} row ${idx + 1} skipped: missing canonical key.`);
+        return null;
+      }
+      return {
+        ...canonical,
+        ...sourceMeta('google_sheets', key, syncedAt),
+      };
+    }).filter(Boolean);
+  }
+
+  return { datasets, presentDatasets: [...presentDatasets], warnings };
+}
+
 function normalizeBrightpearl(payload, syncedAt) {
   const warnings = [];
   const datasets = {};
@@ -511,7 +559,9 @@ export function normalizeProviderPayload(providerId, payload = {}, options = {})
   const syncedAt = options.syncedAt || new Date().toISOString();
   const normalized = providerId === 'quickbooks'
     ? normalizeQuickBooks(payload, syncedAt)
-    : normalizeBrightpearl(payload, syncedAt);
+    : providerId === 'brightpearl'
+      ? normalizeBrightpearl(payload, syncedAt)
+      : normalizeGoogleSheets(payload, syncedAt);
   const counts = Object.fromEntries(
     Object.entries(normalized.datasets)
       .filter(([key]) => key !== 'companyMetrics')
@@ -661,7 +711,7 @@ export function getIntegrationSummary(workspace = {}) {
       syncedDatasets: state.syncedDatasets || [],
       datasetCounts,
       totalRecords,
-      frameworkReady: provider.id === 'manual' || ['quickbooks', 'brightpearl'].includes(provider.id),
+      frameworkReady: provider.id === 'manual' || ['quickbooks', 'brightpearl', 'google_sheets'].includes(provider.id),
       secretsStoredInWorkspace: false,
     };
   });
