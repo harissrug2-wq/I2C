@@ -74,7 +74,7 @@ export function discountAPR(discountPercent, discountDays, netDays) {
   const pct = decimal(discountPercent || 0);
   const dDays = decimal(discountDays || 0);
   const nDays = decimal(netDays || 0);
-  if (!pct.isPositive() || pct.greaterThanOrEqualTo(100) || nDays.lessThanOrEqualTo(dDays)) return 0;
+  if (!pct.greaterThan(0) || pct.greaterThanOrEqualTo(100) || nDays.lessThanOrEqualTo(dDays)) return 0;
   return decimalNumber(
     pct.div(decimal(100).minus(pct))
       .times(decimal(365).div(nDays.minus(dDays))),
@@ -149,7 +149,7 @@ export function computePayablesModule(bills, vendors, cashBalance, thresholds = 
     const discountSavingsDecimal = decimal(bill.discountAvailable || 0);
     const discountSavings = decimalNumber(discountSavingsDecimal);
     const balanceDueDecimal = decimal(bill.balanceDue || 0);
-    const derivedPercent = balanceDueDecimal.isPositive()
+    const derivedPercent = balanceDueDecimal.greaterThan(0)
       ? decimalNumber(discountSavingsDecimal.div(balanceDueDecimal).times(100), 8)
       : 0;
     const effectiveDiscountPercent = Number(bill.discountPercent || 0) > 0
