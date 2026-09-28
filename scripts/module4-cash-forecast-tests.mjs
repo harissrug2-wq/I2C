@@ -22,6 +22,8 @@ assert.equal(cash.inputCoverage.openInvoices, 17, 'All open invoices must enter 
 assert.equal(cash.inputCoverage.openBills, 12, 'All open bills must enter forecast scheduling');
 assert.equal(cash.recurringDailyOutflow, 2000, '120k 60-day baseline outflow should contribute 2k/day recurring commitments');
 assert.equal(cash.baselineDailyInflow, 1500, '90k 60-day baseline inflow should contribute 1.5k/day');
+assert.equal(cash.runwayDays, 9999, 'Cash-generating history must retain the no-finite-runway sentinel');
+assert(Number.isFinite(cash.coverageRatio), 'Coverage ratio must remain finite');
 assert.equal(collectionProbability(20), 0.95);
 assert.equal(collectionProbability(45), 0.80);
 assert.equal(collectionProbability(70), 0.55);
