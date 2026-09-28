@@ -38,22 +38,22 @@ export async function beginQuickBooksConnection() {
 }
 
 export async function beginGoogleSheetsConnection() {
-  return authorizedFetch('/api/integrations/google-sheets/connect', {
+  return authorizedFetch('/api/integrations/google-sheets?action=connect', {
     method:'POST',
     body:JSON.stringify({}),
   });
 }
 
 export async function listGoogleSpreadsheets() {
-  return authorizedFetch('/api/integrations/google-sheets/files');
+  return authorizedFetch('/api/integrations/google-sheets?action=files');
 }
 
 export async function inspectGoogleSpreadsheet(spreadsheetId) {
-  return authorizedFetch(`/api/integrations/google-sheets/inspect?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
+  return authorizedFetch(`/api/integrations/google-sheets?action=inspect&spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
 }
 
 export async function configureGoogleSheetsConnection(config) {
-  return authorizedFetch('/api/integrations/google-sheets/configure', {
+  return authorizedFetch('/api/integrations/google-sheets?action=configure', {
     method:'POST',
     body:JSON.stringify(config || {}),
   });
@@ -68,7 +68,7 @@ export async function beginBrightpearlConnection(accountCode) {
 
 export async function syncLiveIntegration(provider) {
   if (!['quickbooks','brightpearl','google_sheets'].includes(provider)) throw new Error('Unknown live provider.');
-  return authorizedFetch(`/api/integrations/${provider}/sync`, {
+  return authorizedFetch(provider === 'google_sheets' ? '/api/integrations/google-sheets?action=sync' : `/api/integrations/${provider}/sync`, {
     method:'POST',
     body:JSON.stringify({}),
   });
