@@ -10,6 +10,7 @@ const sidebar = read('src/components/Sidebar.jsx');
 const css = read('src/index.css');
 const alerts = read('src/pages/AlertsPage.jsx');
 const manual = read('src/pages/ManualDataPage.jsx');
+const collections = read('src/pages/CollectionsPage.jsx');
 
 assert(app.includes("lg:mr-[430px]"), 'Ask i2C push layout must wait until desktop width');
 assert(!app.includes("md:mr-[430px]"), 'Tablet workspace must not lose 430px to Ask i2C');
@@ -28,6 +29,8 @@ assert(css.includes('overflow-x: hidden'), 'Global body horizontal overflow prot
 assert(css.includes('main table'), 'Responsive table safeguards must remain present');
 assert(alerts.includes('overflow-x-auto'), 'Alert filters must scroll rather than overflow on narrow screens');
 assert(manual.includes('sm:flex-row'), 'Manual data editor heading/actions must stack on mobile');
+assert(collections.includes('min-w-[860px]'), 'Collections queue must fit normal desktop workspaces without a 1080px table floor');
+assert(collections.includes('table-fixed'), 'Collections queue must use fixed column sizing to prevent action overflow');
 
 console.log('✓ Responsive UI source guards passed');
 console.log(JSON.stringify({
