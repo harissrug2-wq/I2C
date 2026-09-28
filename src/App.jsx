@@ -64,14 +64,14 @@ function DashboardView({ onOpenActionModal, onOpenSettings }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <button
             onClick={onOpenSettings}
-            className="rounded-full bg-[#0d9488]/10 hover:bg-[#0d9488]/20 px-3 py-1.5 text-xs font-semibold text-[#0d9488] transition-colors cursor-pointer border border-[#0d9488]/30 flex items-center gap-1.5"
+            className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-full border border-[#0d9488]/30 bg-[#0d9488]/10 px-3 py-2 text-center text-xs font-semibold text-[#0d9488] transition-colors hover:bg-[#0d9488]/20 sm:min-h-0 sm:flex-none sm:py-1.5"
           >
             ⚙️ Rules & Thresholds Config
           </button>
-          <span className="rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs">
+          <span className="hidden rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset shadow-2xs sm:inline-flex">
             Manual data mode
           </span>
         </div>
@@ -252,7 +252,7 @@ function AppContent() {
 
         {/* Main Content Workspace */}
         <div
-          className={`flex-1 flex flex-col min-w-0 transition-[margin,width] duration-300 ease-out ${effectiveSidebarCollapsed ? 'md:ml-16' : 'md:ml-64'} ${isAskAiOpen ? 'md:mr-[430px]' : 'md:mr-0'}`}
+          className={`flex-1 flex flex-col min-w-0 transition-[margin,width] duration-300 ease-out ${effectiveSidebarCollapsed ? 'md:ml-16' : 'md:ml-64'} ${isAskAiOpen ? 'lg:mr-[430px]' : 'lg:mr-0'}`}
         >
           {/* Header Bar */}
           <Header
@@ -266,7 +266,7 @@ function AppContent() {
           <WorkspaceBanner />
 
           {/* Main Workspace Body */}
-          <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <main className="mx-auto w-full max-w-[1400px] min-w-0 flex-1 overflow-x-hidden px-3 py-5 sm:px-5 sm:py-7 lg:px-6 lg:py-8">
             {renderActiveView()}
           </main>
 
