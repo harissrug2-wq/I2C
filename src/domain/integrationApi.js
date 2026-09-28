@@ -48,6 +48,10 @@ export async function listGoogleSpreadsheets() {
   return authorizedFetch('/api/integrations/google-sheets/files');
 }
 
+export async function inspectGoogleSpreadsheet(spreadsheetId) {
+  return authorizedFetch(`/api/integrations/google-sheets/inspect?spreadsheetId=${encodeURIComponent(spreadsheetId)}`);
+}
+
 export async function configureGoogleSheetsConnection(config) {
   return authorizedFetch('/api/integrations/google-sheets/configure', {
     method:'POST',
