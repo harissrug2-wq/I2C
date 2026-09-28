@@ -115,3 +115,43 @@
 .animate-ping {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+
+
+/* Responsive application safeguards */
+html, body, #root {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img, svg, canvas, video {
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  min-width: 0;
+}
+
+main table {
+  width: 100%;
+}
+
+main .overflow-x-auto,
+main [class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 639px) {
+  .card-surface {
+    border-radius: var(--radius);
+  }
+
+  main table {
+    min-width: 640px;
+  }
+}
