@@ -174,9 +174,9 @@ export function computeCashForecastModule(
   const actual60Inflows = Number(metrics.actualInflows60d || 0);
   const actual60Outflows = Number(metrics.actualOutflows60d || 0);
   const rawBurnRate = decimal(actual60Outflows).minus(actual60Inflows).div(60);
-  const burnRateDaily = rawBurnRate.isPositive() ? rawBurnRate : decimal(0);
-  const runwayDays = burnRateDaily.isPositive() ? decimal(cashBalance || 0).div(burnRateDaily).floor().toNumber() : 9999;
-  const coverageRatio = totalOutflows.isPositive()
+  const burnRateDaily = rawBurnRate.greaterThan(0) ? rawBurnRate : decimal(0);
+  const runwayDays = burnRateDaily.greaterThan(0) ? decimal(cashBalance || 0).div(burnRateDaily).floor().toNumber() : 9999;
+  const coverageRatio = totalOutflows.greaterThan(0)
     ? decimalNumber(decimal(cashBalance || 0).plus(totalInflows).div(totalOutflows))
     : 99;
   const operatingFloor = Number(thresholds.operating_cash_floor || 0);
