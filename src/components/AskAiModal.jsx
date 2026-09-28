@@ -243,7 +243,7 @@ export default function AskAiModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/25 md:pointer-events-none md:bg-transparent"
+      className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[1px] lg:pointer-events-none lg:bg-transparent lg:backdrop-blur-none"
       onMouseDown={event => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -252,9 +252,9 @@ export default function AskAiModal({ isOpen, onClose }) {
         role="dialog"
         aria-modal="false"
         aria-labelledby="ask-i2c-title"
-        className="pointer-events-auto flex h-dvh w-full flex-col border-l border-border bg-background shadow-[-16px_0_48px_rgba(15,23,42,0.16)] md:w-[430px] md:max-w-[430px]"
+        className="pointer-events-auto flex h-dvh w-full max-w-full flex-col border-l border-border bg-background shadow-[-16px_0_48px_rgba(15,23,42,0.16)] sm:w-[430px] sm:max-w-[430px]"
       >
-        <header className="flex items-center gap-3 border-b border-border bg-card px-5 py-4">
+        <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#701a75] text-white shadow-sm">
             <Sparkles className="size-5" />
           </div>
@@ -288,7 +288,7 @@ export default function AskAiModal({ isOpen, onClose }) {
           <span className="ml-auto max-w-[135px] truncate text-[11px] font-medium text-muted-foreground">{topic}</span>
         </nav>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
           {view === 'history' ? (
             <div className="space-y-3">
               <div className="mb-4">

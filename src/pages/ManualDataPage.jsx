@@ -5,7 +5,7 @@ import { CSV_DATASET_LABELS, CSV_TEMPLATE_FILES, datasetTemplate, importCsvFiles
 
 const inputClass='w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-[#0d9488]';
 const labelClass='space-y-1 text-[11px] font-semibold text-muted-foreground';
-const btn='inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors';
+const btn='inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:min-h-0';
 
 const SCHEMAS={
   customers:{title:'Customers',key:'id',fields:[['id','Customer ID'],['name','Name'],['contact','Contact'],['email','Email'],['phone','Phone'],['terms','Terms'],['credit_limit','Credit Limit','number'],['category','Category'],['broken_promises','Broken Promises','number'],['risk_score_override','Risk Override','number']]},
@@ -59,7 +59,7 @@ function DatasetEditor({dataset,rows,onChange}){
 
   return <div className="space-y-5">
     <div className="card-surface p-4">
-      <div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-bold">{editingKey?'Edit':'Add'} {schema.title.slice(0,-1)}</h3><p className="text-[11px] text-muted-foreground">Saved locally and recalculated immediately.</p></div>{editingKey&&<button onClick={()=>{setForm(blank);setEditingKey(null)}} className={`${btn} border border-border`}>Cancel edit</button>}</div>
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-bold">{editingKey?'Edit':'Add'} {schema.title.slice(0,-1)}</h3><p className="text-[11px] text-muted-foreground">Saved locally and recalculated immediately.</p></div>{editingKey&&<button onClick={()=>{setForm(blank);setEditingKey(null)}} className={`${btn} border border-border`}>Cancel edit</button>}</div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {schema.fields.map(([key,label,type])=><label className={labelClass} key={key}>{label}<input type={type||'text'} step={type==='number'?'any':undefined} className={inputClass} value={form[key]??''} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))}/></label>)}
       </div>

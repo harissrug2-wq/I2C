@@ -11,7 +11,7 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onO
     : 'bg-[#15803d]/10 text-[#15803d] ring-[#15803d]/20';
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex min-h-16 shrink-0 items-center gap-2 border-b border-border bg-background/85 px-3 py-2 backdrop-blur sm:gap-3 sm:px-5 lg:px-6">
       <button
         onClick={onToggleSidebar}
         className="inline-flex items-center justify-center rounded-md text-sm font-medium cursor-pointer transition-colors hover:bg-muted h-8 w-8 text-muted-foreground"
@@ -36,20 +36,20 @@ export default function Header({ onToggleSidebar, onOpenSearch, onOpenAskAi, onO
         <button
           type="button"
           onClick={onOpenAskAi}
-          className="inline-flex items-center gap-2 rounded-full bg-[#701a75] hover:bg-[#86198f] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-all transform active:scale-95 cursor-pointer"
+          className="inline-flex size-9 items-center justify-center rounded-full bg-[#701a75] text-xs font-semibold text-white shadow-sm transition-all hover:bg-[#86198f] active:scale-95 sm:h-auto sm:w-auto sm:gap-2 sm:px-3.5 sm:py-2"
         >
           <Sparkles className="size-3.5 text-[#f472b6]" />
-          Ask i2C
+          <span className="hidden sm:inline">Ask i2C</span>
         </button>
 
-        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${syncClass}`}>
+        <span className={`hidden items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset sm:inline-flex ${syncClass}`}>
           <SyncIcon className={`size-3.5 ${saveStatus === 'saving' ? 'animate-spin' : ''}`} />
           {syncLabel}
         </span>
 
         <button
           onClick={onOpenAskAi}
-          className="relative flex size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          className="relative hidden size-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
           title="Notifications"
         >
           <Bell className="size-4" />

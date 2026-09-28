@@ -210,7 +210,7 @@ export default function ConnectionsPage() {
       )}
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0d9488]/10 text-[#0d9488]">
             <RefreshCw className="size-5" />
           </div>
@@ -237,7 +237,7 @@ export default function ConnectionsPage() {
           const providerLastSync = live?.lastSyncAt || provider.lastSyncAt;
 
           return (
-            <article key={provider.id} className="card-surface flex min-h-[390px] flex-col p-5">
+            <article key={provider.id} className="card-surface flex flex-col p-4 sm:min-h-[390px] sm:p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex size-11 items-center justify-center rounded-xl bg-[#0d9488]/10 text-[#0d9488]">
                   {isManual ? <Database className="size-5" /> : <PlugZap className="size-5" />}
