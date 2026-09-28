@@ -143,16 +143,16 @@ export function computeSystem1(cash, invoiceList, productList, billList, metrics
   const currentLiabilities = decimalNumber(currentLiabilitiesDecimal);
   const workingCapital = decimalNumber(workingCapitalDecimal);
   const annualizedRevenue = decimalNumber(annualizedRevenueDecimal);
-  const wcRevenueRatio = annualizedRevenueDecimal.isPositive() ? decimalNumber(workingCapitalDecimal.div(annualizedRevenueDecimal)) : 0;
-  const wcTurnover = workingCapitalDecimal.isPositive() ? decimalNumber(annualizedRevenueDecimal.div(workingCapitalDecimal)) : 0;
-  const currentRatio = currentLiabilitiesDecimal.isPositive()
+  const wcRevenueRatio = annualizedRevenueDecimal.greaterThan(0) ? decimalNumber(workingCapitalDecimal.div(annualizedRevenueDecimal)) : 0;
+  const wcTurnover = workingCapitalDecimal.greaterThan(0) ? decimalNumber(annualizedRevenueDecimal.div(workingCapitalDecimal)) : 0;
+  const currentRatio = currentLiabilitiesDecimal.greaterThan(0)
     ? decimalNumber(currentAssetsDecimal.div(currentLiabilitiesDecimal))
-    : (currentAssetsDecimal.isPositive() ? Infinity : 0);
+    : (currentAssetsDecimal.greaterThan(0) ? Infinity : 0);
   const quickAssets = decimalNumber(quickAssetsDecimal);
-  const quickRatio = currentLiabilitiesDecimal.isPositive()
+  const quickRatio = currentLiabilitiesDecimal.greaterThan(0)
     ? decimalNumber(quickAssetsDecimal.div(currentLiabilitiesDecimal))
-    : (quickAssetsDecimal.isPositive() ? Infinity : 0);
-  const cashFreed = ccc > Number(thresholds.target_ccc || 0) && annualizedRevenueDecimal.isPositive()
+    : (quickAssetsDecimal.greaterThan(0) ? Infinity : 0);
+  const cashFreed = ccc > Number(thresholds.target_ccc || 0) && annualizedRevenueDecimal.greaterThan(0)
     ? decimalNumber(decimal(ccc).minus(thresholds.target_ccc || 0).div(365).times(annualizedRevenueDecimal))
     : 0;
 
@@ -440,13 +440,13 @@ export function computeSystem5(productList, customersList, vendorList, threshold
     const sellPrice = decimal(p.sellPrice || 0);
     const wac = decimal(p.wac || 0);
     const grossMarginDollar = sellPrice.minus(wac);
-    const grossMarginPercent = sellPrice.isPositive() ? grossMarginDollar.div(sellPrice) : decimal(0);
+    const grossMarginPercent = sellPrice.greaterThan(0) ? grossMarginDollar.div(sellPrice) : decimal(0);
     const cashCarryCost = sellPrice
       .times(avgCustPayDays)
       .div(365)
       .times(thresholds.cost_of_capital || 0.12);
     const trueMarginDollar = grossMarginDollar.minus(cashCarryCost);
-    const trueMarginPercent = sellPrice.isPositive() ? trueMarginDollar.div(sellPrice) : decimal(0);
+    const trueMarginPercent = sellPrice.greaterThan(0) ? trueMarginDollar.div(sellPrice) : decimal(0);
     return {
       ...p,
       inventoryValue: decimalWholeMoney(decimal(p.onHand || 0).times(wac)),
