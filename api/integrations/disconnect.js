@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   try {
     const { admin, workspaceId } = await requireWorkspaceAuth(req);
     const provider = String(req.body?.provider || '').trim().toLowerCase();
-    if (!['quickbooks','brightpearl'].includes(provider)) return res.status(400).json({ ok:false, error:'Unknown provider.' });
+    if (!['quickbooks','brightpearl','google_sheets'].includes(provider)) return res.status(400).json({ ok:false, error:'Unknown provider.' });
     await deleteConnection(admin, workspaceId, provider);
     return res.status(200).json({ ok:true, provider });
   } catch (error) {
