@@ -45,11 +45,18 @@ assert.equal(applied.workspace.integrations.providers.google_sheets.status, 'syn
 
 const server = fs.readFileSync(new URL('../api/_lib/googleSheetsServer.js', import.meta.url), 'utf8');
 const connections = fs.readFileSync(new URL('../src/pages/ConnectionsPage.jsx', import.meta.url), 'utf8');
+const integrationApi = fs.readFileSync(new URL('../src/domain/integrationApi.js', import.meta.url), 'utf8');
+const consolidatedRoute = fs.readFileSync(new URL('../api/integrations/google-sheets.js', import.meta.url), 'utf8');
 assert(server.includes('spreadsheets.readonly'), 'Google Sheets scope must remain read-only');
 assert(server.includes('drive.metadata.readonly'), 'Spreadsheet discovery must remain metadata-only');
 assert(server.includes("access_type: 'offline'"), 'Google OAuth must request offline access for refresh tokens');
 assert(server.includes('ensureGoogleSheetsToken'), 'Refresh-token path must remain available');
 assert(connections.includes('GoogleSheetsConfigurator'), 'Connections page must expose spreadsheet mapping UI');
+assert(integrationApi.includes("/api/integrations/google-sheets?action=connect"), 'Google Sheets connect must use the consolidated serverless route');
+assert(integrationApi.includes("/api/integrations/google-sheets?action=sync"), 'Google Sheets sync must use the consolidated serverless route');
+assert(consolidatedRoute.includes("action === 'files'"), 'Consolidated route must support spreadsheet discovery');
+assert(consolidatedRoute.includes("action === 'inspect'"), 'Consolidated route must support workbook inspection');
+assert(consolidatedRoute.includes("action === 'configure'"), 'Consolidated route must support mapping persistence');
 
 console.log('✓ Dynamic Google Sheets integration tests passed');
 console.log(JSON.stringify({
@@ -57,4 +64,5 @@ console.log(JSON.stringify({
   paymentAllocation:normalized.datasets.paymentsReceived[0].applied_to[0],
   manualRowPreserved:true,
   readOnlyScopes:true,
+  consolidatedServerlessRoute:true,
 }, null, 2));
