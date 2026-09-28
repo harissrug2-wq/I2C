@@ -25,28 +25,28 @@ export default function CollectionsPage({ onOpenActionModal }) {
         <div><strong>Priority score calibration is provisional.</strong> The source defines the score components and P1/P2/P3 thresholds, while the latest test workbook also gives the expected invoice-level chase order. The queue keeps both inputs explainable.</div>
       </div>
 
-      <div className="card-surface overflow-x-auto">
-        <table className="w-full min-w-[1080px] text-left text-xs">
+      <div className="card-surface overflow-hidden">
+        <div className="overflow-x-auto"><table className="w-full min-w-[860px] table-fixed text-left text-xs">
           <thead className="bg-surface border-b border-border text-muted-foreground uppercase font-semibold">
             <tr>
-              <th className="p-3.5">Rank</th><th className="p-3.5">Invoice</th><th className="p-3.5">Customer</th><th className="p-3.5">Open Balance</th><th className="p-3.5">Aging</th><th className="p-3.5">PayScore</th><th className="p-3.5">Priority</th><th className="p-3.5 text-right">Action</th>
+              <th className="w-[6%] p-3">Rank</th><th className="w-[10%] p-3">Invoice</th><th className="w-[17%] p-3">Customer</th><th className="w-[11%] p-3">Open Balance</th><th className="w-[10%] p-3">Aging</th><th className="w-[8%] p-3">PayScore</th><th className="w-[23%] p-3">Priority</th><th className="w-[15%] p-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {queue.map((item, idx) => (
               <tr key={item.invoiceNo || item.id} className="hover:bg-surface/50 transition-colors align-top">
-                <td className="p-3.5 font-bold text-[#0d9488]">#{idx + 1}</td>
-                <td className="p-3.5"><p className="font-bold text-foreground">{item.invoiceNo}</p><p className="mt-1 text-[10px] text-muted-foreground">Due {item.dueDate || '—'}</p></td>
-                <td className="p-3.5"><p className="font-bold text-foreground">{item.customerName}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.customerId}</p></td>
-                <td className="p-3.5 font-semibold text-foreground">${Number(item.balanceDue || 0).toLocaleString()}</td>
-                <td className="p-3.5"><span className={Number(item.daysOverdue || 0) > 0 ? 'font-semibold text-[#ef4444]' : 'font-semibold text-[#0d9488]'}>{Number(item.daysOverdue || 0) > 0 ? `${item.daysOverdue} days late` : 'Not yet due'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.agingBucket}</p></td>
-                <td className="p-3.5"><span className="font-bold text-foreground">{item.payScore}</span></td>
-                <td className="p-3.5"><span className={`inline-flex rounded-full px-2 py-0.5 font-bold ${tierClass(item.priorityTier)}`}>{item.priorityTier} · {item.priorityScore}</span><p className="mt-1 max-w-[250px] text-[10px] leading-relaxed text-muted-foreground">{item.priorityFactors?.map(f => `${f.name} ${f.value}`).join(' · ')}</p></td>
-                <td className="p-3.5 text-right"><button onClick={() => onOpenActionModal({ title: item.action, details: `${item.invoiceNo} · ${item.customerName} · Open balance $${Number(item.balanceDue || 0).toLocaleString()} · PayScore ${item.payScore}`, reason: `${item.daysOverdue || 0} days overdue; aging bucket ${item.agingBucket}`, risk: `Open exposure $${Number(item.balanceDue || 0).toLocaleString()}`, priority: item.priorityTier, confidence: 75 })} className="inline-flex rounded-lg bg-[#0d9488] px-3 py-1.5 font-semibold text-white hover:bg-[#0f766e] cursor-pointer">{item.action}</button></td>
+                <td className="p-3 font-bold text-[#0d9488]">#{idx + 1}</td>
+                <td className="p-3"><p className="font-bold text-foreground">{item.invoiceNo}</p><p className="mt-1 text-[10px] text-muted-foreground">Due {item.dueDate || '—'}</p></td>
+                <td className="p-3"><p className="font-bold text-foreground">{item.customerName}</p><p className="mt-1 text-[10px] text-muted-foreground">{item.customerId}</p></td>
+                <td className="p-3 font-semibold text-foreground">${Number(item.balanceDue || 0).toLocaleString()}</td>
+                <td className="p-3"><span className={Number(item.daysOverdue || 0) > 0 ? 'font-semibold text-[#ef4444]' : 'font-semibold text-[#0d9488]'}>{Number(item.daysOverdue || 0) > 0 ? `${item.daysOverdue} days late` : 'Not yet due'}</span><p className="mt-1 text-[10px] text-muted-foreground">{item.agingBucket}</p></td>
+                <td className="p-3"><span className="font-bold text-foreground">{item.payScore}</span></td>
+                <td className="p-3"><span className={`inline-flex rounded-full px-2 py-0.5 font-bold ${tierClass(item.priorityTier)}`}>{item.priorityTier} · {item.priorityScore}</span><p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">{item.priorityFactors?.map(f => `${f.name} ${f.value}`).join(' · ')}</p></td>
+                <td className="p-3 text-right"><button onClick={() => onOpenActionModal({ title: item.action, details: `${item.invoiceNo} · ${item.customerName} · Open balance $${Number(item.balanceDue || 0).toLocaleString()} · PayScore ${item.payScore}`, reason: `${item.daysOverdue || 0} days overdue; aging bucket ${item.agingBucket}`, risk: `Open exposure $${Number(item.balanceDue || 0).toLocaleString()}`, priority: item.priorityTier, confidence: 75 })} className="inline-flex max-w-full items-center justify-center rounded-lg bg-[#0d9488] px-2.5 py-1.5 text-center font-semibold leading-tight text-white hover:bg-[#0f766e] cursor-pointer break-words">{item.action}</button></td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   );
