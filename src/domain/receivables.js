@@ -12,6 +12,8 @@
  * the model as provisional.
  */
 
+import { decimal, decimalMoney, decimalNumber, decimalSum } from './decimalMath.js';
+
 const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n || 0)));
 const round1 = n => Math.round(Number(n || 0) * 10) / 10;
 const round2 = n => Math.round(Number(n || 0) * 100) / 100;
@@ -166,10 +168,11 @@ function eclForInvoice(invoice, payScore, lgd) {
   const bucket = receivablesAgingBucket(invoice.daysOverdue);
   const basePD = Number(RECEIVABLES_CONFIG.ecl.pd[bucket] || 0);
   // Latest workbook formula is ECL = open balance × aging-bucket PD × LGD.
+  // Keep the multiplication in Decimal arithmetic and round only at the display boundary.
   // PayScore drives collections/credit risk but does not change ECL PD.
   const multiplier = 1;
   const adjustedPD = clamp(basePD, 0, 1);
-  const ecl = Number(invoice.balanceDue || 0) * adjustedPD * lgd;
+  const ecl = decimal(invoice.balanceDue || 0).times(adjustedPD).times(lgd);
   return {
     ...invoice,
     agingBucket: bucket,
@@ -177,14 +180,15 @@ function eclForInvoice(invoice, payScore, lgd) {
     payScoreMultiplier: multiplier,
     adjustedPD,
     lgd,
-    eclExact: ecl,
-    ecl: round2(ecl),
+    eclExact: decimalNumber(ecl),
+    ecl: decimalMoney(ecl),
   };
 }
 
 export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   const openInvoices = invoices.filter(inv => Number(inv.balanceDue || 0) > 0);
-  const totalARExact = openInvoices.reduce((sum, inv) => sum + Number(inv.balanceDue || 0), 0);
+  const totalARExactDecimal = decimalSum(openInvoices.map(inv => inv.balanceDue || 0));
+  const totalARExact = decimalNumber(totalARExactDecimal);
   const invoiceMedian = median(openInvoices.map(inv => Number(inv.balanceDue || 0)));
   const lgd = Number(thresholds.lgd_default ?? RECEIVABLES_CONFIG.ecl.lgd);
 
@@ -231,7 +235,10 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   });
 
   const eclByCustomer = new Map();
-  eclInvoices.forEach(inv => eclByCustomer.set(inv.customerId, (eclByCustomer.get(inv.customerId) || 0) + Number(inv.eclExact ?? inv.ecl ?? 0)));
+  eclInvoices.forEach(inv => {
+    const prior = eclByCustomer.get(inv.customerId) || decimal(0);
+    eclByCustomer.set(inv.customerId, prior.plus(inv.eclExact ?? inv.ecl ?? 0));
+  });
 
   const customersWithECL = customerRows.map(customer => {
     const creditLimit = Number(customer.creditLimit || 0);
@@ -245,7 +252,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     const priority = priorityForCustomer(customer, invoiceMedian);
     return {
       ...customer,
-      ecl: round2(eclByCustomer.get(customer.id) || 0),
+      ecl: decimalMoney(eclByCustomer.get(customer.id) || 0),
       recommendedLimit,
       isCreditBreached: customer.creditUtilization != null && customer.creditUtilization > 100,
       ...priority,
@@ -265,7 +272,9 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
   // Keep full precision until the portfolio total is calculated. This matches
   // the workbook's bucket-level total (for example $4,087.86 instead of
   // summing individually rounded invoice ECL values to $4,087.87).
-  const totalECL = detailedInvoices.reduce((sum, inv) => sum + Number(inv.eclExact ?? inv.ecl ?? 0), 0);
+  const totalECLDecimal = decimalSum(detailedInvoices.map(inv => inv.eclExact ?? inv.ecl ?? 0));
+  const totalECL = decimalNumber(totalECLDecimal);
+  const collectibleARDecimal = totalARExactDecimal.minus(totalECLDecimal);
 
   const collectionQueue = [...customersWithECL]
     .filter(c => Number(c.balance || 0) > 0)
@@ -337,7 +346,7 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     .filter(inv => Number(inv.daysOverdue || 0) > 120)
     .map(inv => ({
       ...inv,
-      grossBadDebtRecommendation: round2(Number(inv.balanceDue || 0) * Number(inv.basePD || 0)),
+      grossBadDebtRecommendation: decimalMoney(decimal(inv.balanceDue || 0).times(inv.basePD || 0)),
       eclReserve: round2(inv.eclExact ?? inv.ecl ?? 0),
     }));
 
@@ -361,8 +370,8 @@ export function computeReceivablesModule(customers, invoices, thresholds = {}) {
     collectionQueue,
     invoiceCollectionQueue,
     badDebtCandidates,
-    totalECL: round2(totalECL),
-    collectibleAR: round2(Math.max(0, totalARExact - totalECL)),
+    totalECL: decimalMoney(totalECLDecimal),
+    collectibleAR: decimalMoney(collectibleARDecimal.isNegative() ? 0 : collectibleARDecimal),
     moneyAtRisk: money(detailedInvoices.filter(i => i.payScore >= 60 || i.daysOverdue > 60).reduce((s, i) => s + Number(i.balanceDue || 0), 0)),
     highestECLInvoice,
     highestRiskCustomer,

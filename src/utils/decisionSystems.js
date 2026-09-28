@@ -2,6 +2,7 @@ import phase1Config from '../config/phase1RuleConfig.json' with { type: 'json' }
 import { computeReceivablesModule } from '../domain/receivables.js';
 import { computeCashForecastModule } from '../domain/cashForecast.js';
 import { evaluatePayablesRules } from '../domain/payables.js';
+import { decimal, decimalMoney, decimalNumber, decimalSum, decimalWholeMoney } from '../domain/decimalMath.js';
 
 /**
  * i2cashflow Phase 1 decision engine.
@@ -109,9 +110,12 @@ function sortAdvisories(items) {
 export function computeSystem1(cash, invoiceList, productList, billList, metrics, thresholds = DEFAULT_THRESHOLDS) {
   const openInvoices = invoiceList.filter(i => Number(i.balanceDue) > 0);
   const openBills = billList.filter(b => Number(b.balanceDue) > 0);
-  const totalAR = openInvoices.reduce((sum, inv) => sum + Number(inv.balanceDue || 0), 0);
-  const totalAP = openBills.reduce((sum, b) => sum + Number(b.balanceDue || 0), 0);
-  const inventoryValue = productList.reduce((sum, p) => sum + Number(p.onHand || 0) * Number(p.wac || 0), 0);
+  const totalARDecimal = decimalSum(openInvoices.map(inv => inv.balanceDue || 0));
+  const totalAPDecimal = decimalSum(openBills.map(b => b.balanceDue || 0));
+  const inventoryValueDecimal = decimalSum(productList.map(p => decimal(p.onHand || 0).times(p.wac || 0)));
+  const totalAR = decimalNumber(totalARDecimal);
+  const totalAP = decimalNumber(totalAPDecimal);
+  const inventoryValue = decimalNumber(inventoryValueDecimal);
 
   // Design default period is 90 days. If true 90-day data is unavailable, the
   // adapter annualises the available 30-day company metrics and marks the source.
@@ -126,17 +130,30 @@ export function computeSystem1(cash, invoiceList, productList, billList, metrics
   const dpo = purchasesPeriod > 0 ? (totalAP / purchasesPeriod) * periodDays : 0;
   const ccc = dio + dso - dpo;
 
-  const currentAssets = Number(cash || 0) + totalAR + inventoryValue;
-  const currentLiabilities = totalAP + otherCurrentLiabilities;
-  const workingCapital = currentAssets - currentLiabilities;
-  const annualizedRevenue = revenuePeriod > 0 ? revenuePeriod * (365 / periodDays) : 0;
-  const wcRevenueRatio = annualizedRevenue > 0 ? workingCapital / annualizedRevenue : 0;
-  const wcTurnover = workingCapital > 0 ? annualizedRevenue / workingCapital : 0;
-  const currentRatio = currentLiabilities > 0 ? currentAssets / currentLiabilities : (currentAssets > 0 ? Infinity : 0);
-  const quickAssets = Number(cash || 0) + totalAR;
-  const quickRatio = currentLiabilities > 0 ? quickAssets / currentLiabilities : (quickAssets > 0 ? Infinity : 0);
-  const cashFreed = ccc > Number(thresholds.target_ccc || 0) && annualizedRevenue > 0
-    ? ((ccc - Number(thresholds.target_ccc || 0)) / 365) * annualizedRevenue
+  const cashDecimal = decimal(cash || 0);
+  const currentAssetsDecimal = cashDecimal.plus(totalARDecimal).plus(inventoryValueDecimal);
+  const currentLiabilitiesDecimal = totalAPDecimal.plus(otherCurrentLiabilities);
+  const workingCapitalDecimal = currentAssetsDecimal.minus(currentLiabilitiesDecimal);
+  const annualizedRevenueDecimal = revenuePeriod > 0
+    ? decimal(revenuePeriod).times(decimal(365).div(periodDays))
+    : decimal(0);
+  const quickAssetsDecimal = cashDecimal.plus(totalARDecimal);
+
+  const currentAssets = decimalNumber(currentAssetsDecimal);
+  const currentLiabilities = decimalNumber(currentLiabilitiesDecimal);
+  const workingCapital = decimalNumber(workingCapitalDecimal);
+  const annualizedRevenue = decimalNumber(annualizedRevenueDecimal);
+  const wcRevenueRatio = annualizedRevenueDecimal.greaterThan(0) ? decimalNumber(workingCapitalDecimal.div(annualizedRevenueDecimal)) : 0;
+  const wcTurnover = workingCapitalDecimal.greaterThan(0) ? decimalNumber(annualizedRevenueDecimal.div(workingCapitalDecimal)) : 0;
+  const currentRatio = currentLiabilitiesDecimal.greaterThan(0)
+    ? decimalNumber(currentAssetsDecimal.div(currentLiabilitiesDecimal))
+    : (currentAssetsDecimal.greaterThan(0) ? Infinity : 0);
+  const quickAssets = decimalNumber(quickAssetsDecimal);
+  const quickRatio = currentLiabilitiesDecimal.greaterThan(0)
+    ? decimalNumber(quickAssetsDecimal.div(currentLiabilitiesDecimal))
+    : (quickAssetsDecimal.greaterThan(0) ? Infinity : 0);
+  const cashFreed = ccc > Number(thresholds.target_ccc || 0) && annualizedRevenueDecimal.greaterThan(0)
+    ? decimalNumber(decimal(ccc).minus(thresholds.target_ccc || 0).div(365).times(annualizedRevenueDecimal))
     : 0;
 
   const history = Array.isArray(metrics.wcmHistory) ? metrics.wcmHistory : [];
@@ -180,7 +197,7 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
     abcMap[p.sku] = rankShare < 0.20 ? 'A' : rankShare < 0.50 ? 'B' : 'C';
   });
 
-  const inventoryValues = stockProducts.map(p => Number(p.onHand || 0) * Number(p.wac || 0));
+  const inventoryValues = stockProducts.map(p => decimalNumber(decimal(p.onHand || 0).times(p.wac || 0)));
   const wkspMedianInventoryValue = median(inventoryValues);
   const stagnantDays = Number(thresholds.stagnant_days ?? phase1Config.rules['INV-011'].stagnantDays);
   const classServiceZ = {
@@ -213,8 +230,8 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
     const averageOnHandAvailable = Number.isFinite(Number(p.averageOnHand)) && Number(p.averageOnHand) > 0;
     const averageOnHand = averageOnHandAvailable ? Number(p.averageOnHand) : onHand;
     const turnoverAnnual = averageOnHand > 0 ? annualSales / averageOnHand : 0;
-    const inventoryValue = onHand * wac;
-    const annualRevenue = annualSales * Number(p.sellPrice || 0);
+    const inventoryValue = decimalNumber(decimal(onHand).times(wac));
+    const annualRevenue = decimalNumber(decimal(annualSales).times(p.sellPrice || 0));
 
     let stockoutRisk = 'NONE';
     if (velocityDaily > 0 && leadTimeDays > 0) {
@@ -277,11 +294,17 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
   });
 
   const inventorySKUs = processedSKUs.filter(p => p.status !== 'Non-stock');
-  const totalValue = inventorySKUs.reduce((s, p) => s + p.inventoryValue, 0);
-  const deadStockValue = inventorySKUs.filter(p => p.status === 'Dead Stock').reduce((s, p) => s + p.inventoryValue, 0);
-  const overstockedValue = inventorySKUs.filter(p => p.status === 'Overstocked').reduce((s, p) => s + p.inventoryValue, 0);
-  const slowMovingValue = inventorySKUs.filter(p => p.status === 'Slow Moving').reduce((s, p) => s + p.inventoryValue, 0);
-  const healthyValue = Math.max(0, totalValue - deadStockValue - overstockedValue - slowMovingValue);
+  const totalValueDecimal = decimalSum(inventorySKUs.map(p => p.inventoryValue));
+  const deadStockValueDecimal = decimalSum(inventorySKUs.filter(p => p.status === 'Dead Stock').map(p => p.inventoryValue));
+  const overstockedValueDecimal = decimalSum(inventorySKUs.filter(p => p.status === 'Overstocked').map(p => p.inventoryValue));
+  const slowMovingValueDecimal = decimalSum(inventorySKUs.filter(p => p.status === 'Slow Moving').map(p => p.inventoryValue));
+  const healthyValueDecimal = totalValueDecimal.minus(deadStockValueDecimal).minus(overstockedValueDecimal).minus(slowMovingValueDecimal);
+
+  const totalValue = decimalWholeMoney(totalValueDecimal);
+  const deadStockValue = decimalWholeMoney(deadStockValueDecimal);
+  const overstockedValue = decimalWholeMoney(overstockedValueDecimal);
+  const slowMovingValue = decimalWholeMoney(slowMovingValueDecimal);
+  const healthyValue = decimalWholeMoney(healthyValueDecimal.isNegative() ? 0 : healthyValueDecimal);
   const riskRank = { HIGH:3, MEDIUM:2, LOW:1, NONE:0 };
   const classRank = { A:3, B:2, C:1, Unclassified:0 };
   const reorderCandidates = inventorySKUs
@@ -299,8 +322,8 @@ export function computeSystem2(productList, thresholds = DEFAULT_THRESHOLDS) {
     return {
       abcClass,
       skuCount: rows.length,
-      inventoryValue: rows.reduce((s,p)=>s+p.inventoryValue,0),
-      annualRevenue: rows.reduce((s,p)=>s+p.annualRevenue,0),
+      inventoryValue: decimalWholeMoney(decimalSum(rows.map(p => p.inventoryValue))),
+      annualRevenue: decimalWholeMoney(decimalSum(rows.map(p => p.annualRevenue))),
     };
   }).filter(row => row.skuCount > 0);
 
@@ -414,12 +437,24 @@ export function computeSystem5(productList, customersList, vendorList, threshold
   // advisory is generated from these values.
   const avgCustPayDays = customersList.reduce((s, c) => s + Number(c.avgDaysToPay || 0), 0) / (customersList.length || 1);
   const trueMarginSkus = productList.filter(p => p.category !== 'Non-stock').map(p => {
-    const sellPrice = Number(p.sellPrice || 0), wac = Number(p.wac || 0);
-    const grossMarginPercent = sellPrice > 0 ? (sellPrice - wac) / sellPrice : 0;
-    const cashCarryCost = (sellPrice * avgCustPayDays / 365) * Number(thresholds.cost_of_capital || 0.12);
-    const trueMarginDollar = (sellPrice - wac) - cashCarryCost;
-    const trueMarginPercent = sellPrice > 0 ? trueMarginDollar / sellPrice : 0;
-    return { ...p, inventoryValue: money(Number(p.onHand || 0) * wac), grossMarginPercent: round1(grossMarginPercent * 100), cashCarryCost: round2(cashCarryCost), trueMarginPercent: round1(trueMarginPercent * 100), marginErosionPts: round1((grossMarginPercent - trueMarginPercent) * 100) };
+    const sellPrice = decimal(p.sellPrice || 0);
+    const wac = decimal(p.wac || 0);
+    const grossMarginDollar = sellPrice.minus(wac);
+    const grossMarginPercent = sellPrice.greaterThan(0) ? grossMarginDollar.div(sellPrice) : decimal(0);
+    const cashCarryCost = sellPrice
+      .times(avgCustPayDays)
+      .div(365)
+      .times(thresholds.cost_of_capital || 0.12);
+    const trueMarginDollar = grossMarginDollar.minus(cashCarryCost);
+    const trueMarginPercent = sellPrice.greaterThan(0) ? trueMarginDollar.div(sellPrice) : decimal(0);
+    return {
+      ...p,
+      inventoryValue: decimalWholeMoney(decimal(p.onHand || 0).times(wac)),
+      grossMarginPercent: decimalNumber(grossMarginPercent.times(100), 1),
+      cashCarryCost: decimalMoney(cashCarryCost),
+      trueMarginPercent: decimalNumber(trueMarginPercent.times(100), 1),
+      marginErosionPts: decimalNumber(grossMarginPercent.minus(trueMarginPercent).times(100), 1),
+    };
   });
 
   return {

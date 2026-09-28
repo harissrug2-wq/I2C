@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs && node scripts/small-dataset-rules-tests.mjs && node scripts/module6-cross-domain-tests.mjs && node scripts/module7-integrations-tests.mjs && node scripts/module8-live-integration-tests.mjs && node scripts/module9-intelligence-history-tests.mjs && node scripts/module10-ask-i2c-tests.mjs && node scripts/module11-rule-overrides-tests.mjs",
+    "test": "node scripts/reconcile.mjs && node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs && node scripts/module1-csv-tests.mjs && node scripts/module2-receivables-tests.mjs && node scripts/module3-payables-tests.mjs && node scripts/module4-cash-forecast-tests.mjs && node scripts/module5-inventory-tests.mjs && node scripts/auth-isolation-tests.mjs && node scripts/small-dataset-rules-tests.mjs && node scripts/module6-cross-domain-tests.mjs && node scripts/module7-integrations-tests.mjs && node scripts/module8-live-integration-tests.mjs && node scripts/module9-intelligence-history-tests.mjs && node scripts/module10-ask-i2c-tests.mjs && node scripts/module11-rule-overrides-tests.mjs && node scripts/module12-exact-decimal-tests.mjs",
     "reconcile": "node scripts/reconcile.mjs",
     "test:phase1": "node scripts/phase1-rule-tests.mjs && node scripts/phase1-engine-smoke.mjs",
     "test:module1": "node scripts/module1-csv-tests.mjs",
@@ -22,7 +22,8 @@
     "test:live-integrations": "node scripts/module8-live-integration-tests.mjs",
     "test:ask-i2c": "node scripts/module10-ask-i2c-tests.mjs",
     "test:intelligence-history": "node scripts/module9-intelligence-history-tests.mjs",
-    "test:rule-overrides": "node scripts/module11-rule-overrides-tests.mjs"
+    "test:rule-overrides": "node scripts/module11-rule-overrides-tests.mjs",
+    "test:exact-decimal": "node scripts/module12-exact-decimal-tests.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
@@ -31,7 +32,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "decimal.js": "^10.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
