@@ -4,14 +4,14 @@ import {
   requireWorkspaceAuth,
   signState,
   updateConnection,
-} from './_lib/integrationServer.js';
+} from '../_lib/integrationServer.js';
 import {
   ensureGoogleSheetsToken,
   googleSheetsAuthorizationUrl,
   inspectGoogleSpreadsheet,
   listGoogleSpreadsheets,
   readMappedGoogleSheetsPayload,
-} from './_lib/googleSheetsServer.js';
+} from '../_lib/googleSheetsServer.js';
 
 function actionFrom(req) {
   return String(req.query?.action || req.body?.action || '').trim().toLowerCase();
