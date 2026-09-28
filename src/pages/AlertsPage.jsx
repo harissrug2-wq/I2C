@@ -26,22 +26,22 @@ export default function AlertsPage({ onOpenActionModal }) {
           </p>
         </div>
 
-        <div className="flex rounded-full bg-card p-1 ring-1 ring-border shadow-2xs">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-card p-1 ring-1 ring-border shadow-2xs sm:rounded-full">
           <button
             onClick={() => setFilter('all')}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'all' ? 'bg-[#0d9488] text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'all' ? 'bg-[#0d9488] text-white' : 'text-muted-foreground hover:text-foreground'}`}
           >
             All Alerts ({advisories.length})
           </button>
           <button
             onClick={() => setFilter('critical')}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'critical' ? 'bg-[#ef4444] text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'critical' ? 'bg-[#ef4444] text-white' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Critical
           </button>
           <button
             onClick={() => setFilter('high')}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'high' ? 'bg-[#f59e0b] text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer ${filter === 'high' ? 'bg-[#f59e0b] text-white' : 'text-muted-foreground hover:text-foreground'}`}
           >
             High Priority
           </button>
