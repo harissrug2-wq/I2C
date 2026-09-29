@@ -122,15 +122,19 @@ export async function inspectGoogleSpreadsheet(secret, spreadsheetId) {
 
   for (const sheet of meta?.sheets || []) {
     const title = sheet?.properties?.title || '';
-    const range = encodeURIComponent(`${quoteSheetName(title)}!1:1`);
-    const header = await googleGet(secret, `${GOOGLE_SHEETS_BASE}/${encodeURIComponent(id)}/values/${range}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`);
+    const range = encodeURIComponent(`${quoteSheetName(title)}!1:10`);
+    const preview = await googleGet(secret, `${GOOGLE_SHEETS_BASE}/${encodeURIComponent(id)}/values/${range}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`);
+    const sampleRows = Array.isArray(preview?.values)
+      ? preview.values.map(row => Array.isArray(row) ? row.map(value => String(value ?? '').trim()) : [])
+      : [];
     sheets.push({
       sheetId: sheet?.properties?.sheetId,
       title,
       index: sheet?.properties?.index,
       rowCount: sheet?.properties?.gridProperties?.rowCount || 0,
       columnCount: sheet?.properties?.gridProperties?.columnCount || 0,
-      headers: Array.isArray(header?.values?.[0]) ? header.values[0].map(value => String(value ?? '').trim()) : [],
+      headers: sampleRows[0] || [],
+      sampleRows,
     });
   }
 

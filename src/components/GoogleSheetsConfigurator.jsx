@@ -84,17 +84,34 @@ function bestHeader(field, headers) {
   return headers.find(header => (aliases[field] || []).includes(norm(header))) || '';
 }
 
+function headerRowScore(fields, row = []) {
+  return fields.reduce((score, field) => score + (bestHeader(field, row) ? 1 : 0), 0);
+}
+
+function bestHeaderRow(fields, sheet) {
+  const sampleRows = Array.isArray(sheet?.sampleRows) && sheet.sampleRows.length
+    ? sheet.sampleRows
+    : [sheet?.headers || []];
+
+  let best = { row:1, headers:sampleRows[0] || [], score:-1 };
+  sampleRows.forEach((row, index) => {
+    const score = headerRowScore(fields, row);
+    if (score > best.score) best = { row:index + 1, headers:row, score };
+  });
+  return best;
+}
+
 function autoMappings(spreadsheet) {
   const sheets = spreadsheet?.sheets || [];
   return Object.entries(DATASET_FIELDS).map(([dataset, fields]) => {
     const aliases = (TAB_ALIASES[dataset] || []).map(norm);
     const sheet = sheets.find(item => aliases.includes(norm(item.title)));
-    const headers = sheet?.headers || [];
+    const detected = bestHeaderRow(fields, sheet);
     return {
       dataset,
       sheetName:sheet?.title || '',
-      headerRow:1,
-      columnMap:Object.fromEntries(fields.map(field => [field, bestHeader(field, headers)]).filter(([, header]) => header)),
+      headerRow:detected.row,
+      columnMap:Object.fromEntries(fields.map(field => [field, bestHeader(field, detected.headers)]).filter(([, header]) => header)),
     };
   });
 }
@@ -159,20 +176,35 @@ export default function GoogleSheetsConfigurator({ connection, onStatusRefresh }
   const updateSheet = (dataset, sheetName) => {
     const sheet = spreadsheet?.sheets?.find(item => item.title === sheetName);
     const fields = DATASET_FIELDS[dataset] || [];
+    const detected = bestHeaderRow(fields, sheet);
     setMappings(prev => {
       const current = prev.find(item => item.dataset === dataset);
       const next = {
         dataset,
         sheetName,
-        headerRow:1,
+        headerRow:detected.row,
         columnMap:sheetName
-          ? Object.fromEntries(fields.map(field => [field, bestHeader(field, sheet?.headers || [])]).filter(([, header]) => header))
+          ? Object.fromEntries(fields.map(field => [field, bestHeader(field, detected.headers)]).filter(([, header]) => header))
           : {},
       };
       return current
         ? prev.map(item => item.dataset === dataset ? next : item)
         : [...prev, next];
     });
+  };
+
+  const updateHeaderRow = (dataset, headerRow) => {
+    setMappings(prev => prev.map(item => {
+      if (item.dataset !== dataset) return item;
+      const fields = DATASET_FIELDS[dataset] || [];
+      const sheet = spreadsheet?.sheets?.find(entry => entry.title === item.sheetName);
+      const headers = sheet?.sampleRows?.[headerRow - 1] || [];
+      return {
+        ...item,
+        headerRow,
+        columnMap:Object.fromEntries(fields.map(field => [field, bestHeader(field, headers)]).filter(([, header]) => header)),
+      };
+    }));
   };
 
   const updateColumn = (dataset, field, sourceHeader) => {
@@ -258,7 +290,8 @@ export default function GoogleSheetsConfigurator({ connection, onStatusRefresh }
             {Object.keys(DATASET_FIELDS).map(dataset => {
               const mapping = mappings.find(item => item.dataset === dataset) || { dataset, sheetName:'', columnMap:{} };
               const sheet = spreadsheet.sheets?.find(item => item.title === mapping.sheetName);
-              const headers = sheet?.headers || [];
+              const headerRow = Math.max(1, Number(mapping.headerRow || 1));
+              const headers = sheet?.sampleRows?.[headerRow - 1] || sheet?.headers || [];
               const mappedCount = Object.values(mapping.columnMap || {}).filter(Boolean).length;
               return (
                 <details key={dataset} className="rounded-xl border border-border bg-card">
@@ -279,7 +312,28 @@ export default function GoogleSheetsConfigurator({ connection, onStatusRefresh }
                   </summary>
 
                   {mapping.sheetName && (
-                    <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="border-t border-border p-3">
+                      <div className="mb-3 flex flex-col gap-2 rounded-lg bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Header row</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">If your column names are not in row 1, choose the correct row.</p>
+                        </div>
+                        <select
+                          value={headerRow}
+                          onChange={event => updateHeaderRow(dataset, Number(event.target.value))}
+                          className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs outline-none sm:w-40"
+                        >
+                          {Array.from({ length: Math.max(1, Math.min(10, sheet?.sampleRows?.length || 1)) }, (_, index) => (
+                            <option key={index + 1} value={index + 1}>Row {index + 1}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {headers.length === 0 && (
+                        <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">
+                          No column headers found in this row. Choose another header row.
+                        </p>
+                      )}
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {DATASET_FIELDS[dataset].map(field => (
                         <label key={field} className="text-[10px] font-semibold text-muted-foreground">
                           {humanize(field)}
@@ -293,6 +347,7 @@ export default function GoogleSheetsConfigurator({ connection, onStatusRefresh }
                           </select>
                         </label>
                       ))}
+                      </div>
                     </div>
                   )}
                 </details>
@@ -302,7 +357,7 @@ export default function GoogleSheetsConfigurator({ connection, onStatusRefresh }
 
           <button
             onClick={saveAndSync}
-            disabled={busy === 'save' || !mappings.some(item => item.sheetName)}
+            disabled={busy === 'save' || !mappings.some(item => item.sheetName && Object.values(item.columnMap || {}).some(Boolean))}
             className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[#0d9488] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#0f766e] disabled:opacity-60 sm:w-auto"
           >
             {busy === 'save' ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
