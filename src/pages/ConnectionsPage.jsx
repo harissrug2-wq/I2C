@@ -13,8 +13,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import GoogleSheetsConfigurator from '../components/GoogleSheetsConfigurator';
 import {
   beginBrightpearlConnection,
+  beginGoogleSheetsConnection,
   beginQuickBooksConnection,
   disconnectLiveIntegration,
   fetchLiveIntegrationStatus,
@@ -106,7 +108,7 @@ export default function ConnectionsPage() {
     if (provider && status) {
       setMessage(
         status === 'connected'
-          ? `${provider === 'quickbooks' ? 'QuickBooks Online' : 'Brightpearl'} connected. Run Sync now to import live data.`
+          ? `${provider === 'quickbooks' ? 'QuickBooks Online' : provider === 'google_sheets' ? 'Google Sheets' : 'Brightpearl'} connected.${provider === 'google_sheets' ? ' Select and map a spreadsheet below.' : ' Run Sync now to import live data.'}`
           : callbackMessage || `${provider} connection failed.`
       );
       window.history.replaceState(null, '', '/connections');
@@ -119,6 +121,18 @@ export default function ConnectionsPage() {
     setMessage('');
     try {
       const result = await beginQuickBooksConnection();
+      window.location.assign(result.url);
+    } catch (error) {
+      setMessage(error.message);
+      setBusyProvider('');
+    }
+  };
+
+  const connectGoogleSheets = async () => {
+    setBusyProvider('google_sheets');
+    setMessage('');
+    try {
+      const result = await beginGoogleSheetsConnection();
       window.location.assign(result.url);
     } catch (error) {
       setMessage(error.message);
@@ -152,7 +166,7 @@ export default function ConnectionsPage() {
       const warningText = applied.warnings?.length
         ? ` ${applied.warnings.length} mapping warning(s) were recorded.`
         : '';
-      setMessage(`${providerId === 'quickbooks' ? 'QuickBooks Online' : 'Brightpearl'} sync completed.${warningText}`);
+      setMessage(`${providerId === 'quickbooks' ? 'QuickBooks Online' : providerId === 'google_sheets' ? 'Google Sheets' : 'Brightpearl'} sync completed.${warningText}`);
       await refreshStatus({ silent:true });
     } catch (error) {
       setMessage(error.message);
@@ -328,12 +342,16 @@ export default function ConnectionsPage() {
                     )}
 
                     <button
-                      onClick={provider.id === 'quickbooks' ? connectQuickBooks : connectBrightpearl}
+                      onClick={provider.id === 'quickbooks'
+                        ? connectQuickBooks
+                        : provider.id === 'google_sheets'
+                          ? connectGoogleSheets
+                          : connectBrightpearl}
                       disabled={isBusy || loadingStatus}
                       className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#0d9488] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0f766e] disabled:opacity-60"
                     >
                       {isBusy ? <Loader2 className="size-3.5 animate-spin" /> : <ServerCog className="size-3.5" />}
-                      Connect {provider.id === 'quickbooks' ? 'QuickBooks' : 'Brightpearl'}
+                      Connect {provider.id === 'quickbooks' ? 'QuickBooks' : provider.id === 'google_sheets' ? 'Google Sheets' : 'Brightpearl'}
                     </button>
                   </div>
                 )}
@@ -342,6 +360,13 @@ export default function ConnectionsPage() {
           );
         })}
       </div>
+
+      {liveByProvider.get('google_sheets') && ['connected','error'].includes(liveByProvider.get('google_sheets')?.status) && (
+        <GoogleSheetsConfigurator
+          connection={liveByProvider.get('google_sheets')}
+          onStatusRefresh={() => refreshStatus({ silent:true })}
+        />
+      )}
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-start gap-3">
@@ -352,7 +377,7 @@ export default function ConnectionsPage() {
             <h2 className="font-bold">Secure sync behavior</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Access and refresh tokens are encrypted before storage. The browser receives only connection status and provider data returned by an authenticated sync.
-              QuickBooks payments are reconciled to invoice/bill document numbers before entering the existing adapters. Brightpearl updates live stock while preserving an existing i2C/manual cost basis when Brightpearl does not provide an explicit weighted average cost.
+              QuickBooks payments are reconciled to invoice/bill document numbers before entering the existing adapters. Brightpearl updates live stock while preserving an existing i2C/manual cost basis when Brightpearl does not provide an explicit weighted average cost. Google Sheets uses read-only OAuth access, stores its mapping server-side, and refreshes only the canonical rows owned by that spreadsheet connection.
             </p>
           </div>
         </div>

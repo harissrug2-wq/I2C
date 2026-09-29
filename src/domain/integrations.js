@@ -61,6 +61,15 @@ export const INTEGRATION_PROVIDERS = Object.freeze({
     datasets: ['products', 'suppliers', 'invoiceLines'],
     description: 'Inventory source for SKU master, on-hand stock, cost and related item data.',
   },
+  google_sheets: {
+    id: 'google_sheets',
+    name: 'Google Sheets',
+    category: 'Spreadsheet',
+    authMode: 'oauth2-server',
+    serverOnlySecrets: true,
+    datasets: [...CANONICAL_DATASETS, 'companyMetrics'],
+    description: 'Dynamic spreadsheet source with per-tab and per-column mapping into the canonical i2C workspace.',
+  },
 });
 
 const DATASET_KEYS = Object.freeze({
@@ -407,6 +416,84 @@ function mergeBrightpearlInventory(products, inventory) {
   });
 }
 
+const GOOGLE_NUMBER_FIELDS = Object.freeze(new Set([
+  'credit_limit','broken_promises','risk_score_override','discount_pct','discount_days','net_days','lead_time_days',
+  'total','balance_due','line_no','qty','unit_price','line_total','discount_available','amount','applied_amount',
+  'amount_paid','discount_taken','wac','on_hand','average_on_hand','sell_price','sales_60d','annual_sales',
+  'lead_time_stddev','days_quiet','reorder_point','safety_stock','balance','revenue_last_30_days',
+  'cogs_last_30_days','operating_expenses_last_30_days','other_expenses_last_30_days','other_current_liabilities',
+  'monthly_payroll','forecast_baseline_other_outflows_60d','forecast_baseline_other_inflows_60d',
+]));
+
+const GOOGLE_DATE_FIELDS = Object.freeze(new Set([
+  'invoice_date','bill_date','payment_date','due_date','as_of_date',
+]));
+
+function normalizeGoogleValue(field, value) {
+  if (value === undefined || value === null || value === '') return value;
+  if (GOOGLE_NUMBER_FIELDS.has(field)) return number(value, null);
+  if (GOOGLE_DATE_FIELDS.has(field)) return isoDate(value);
+  return text(value);
+}
+
+function normalizeGoogleSheets(payload, syncedAt) {
+  const warnings = [];
+  const datasets = {};
+  const presentDatasets = new Set();
+
+  for (const dataset of [...CANONICAL_DATASETS, 'companyMetrics']) {
+    if (!hasOwn(payload, dataset)) continue;
+    presentDatasets.add(dataset);
+
+    if (dataset === 'companyMetrics') {
+      const metrics = payload.companyMetrics && typeof payload.companyMetrics === 'object'
+        ? payload.companyMetrics
+        : {};
+      datasets.companyMetrics = Object.fromEntries(
+        Object.entries(metrics)
+          .map(([field, value]) => [field, normalizeGoogleValue(field, value)])
+          .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+      );
+      continue;
+    }
+
+    const rows = Array.isArray(payload[dataset]) ? payload[dataset] : [];
+    const keyFn = DATASET_KEYS[dataset];
+    datasets[dataset] = rows.map((row, idx) => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) {
+        warnings.push(`Google Sheets ${dataset} row ${idx + 1} skipped: invalid row.`);
+        return null;
+      }
+
+      const canonical = Object.fromEntries(
+        Object.entries(row).map(([field, value]) => [field, normalizeGoogleValue(field, value)])
+      );
+
+      if (dataset === 'paymentsReceived' && canonical.invoice_no) {
+        canonical.applied_to = [{
+          invoice_no:text(canonical.invoice_no),
+          amount:number(canonical.applied_amount, number(canonical.amount, 0) || 0) || 0,
+        }];
+        delete canonical.invoice_no;
+        delete canonical.applied_amount;
+      }
+
+      const key = keyFn?.(canonical);
+      if (!key) {
+        warnings.push(`Google Sheets ${dataset} row ${idx + 1} skipped: missing canonical key.`);
+        return null;
+      }
+
+      return {
+        ...canonical,
+        ...sourceMeta('google_sheets', key, syncedAt),
+      };
+    }).filter(Boolean);
+  }
+
+  return { datasets, presentDatasets: [...presentDatasets], warnings };
+}
+
 function normalizeBrightpearl(payload, syncedAt) {
   const warnings = [];
   const datasets = {};
@@ -511,7 +598,9 @@ export function normalizeProviderPayload(providerId, payload = {}, options = {})
   const syncedAt = options.syncedAt || new Date().toISOString();
   const normalized = providerId === 'quickbooks'
     ? normalizeQuickBooks(payload, syncedAt)
-    : normalizeBrightpearl(payload, syncedAt);
+    : providerId === 'brightpearl'
+      ? normalizeBrightpearl(payload, syncedAt)
+      : normalizeGoogleSheets(payload, syncedAt);
   const counts = Object.fromEntries(
     Object.entries(normalized.datasets)
       .filter(([key]) => key !== 'companyMetrics')
@@ -661,7 +750,7 @@ export function getIntegrationSummary(workspace = {}) {
       syncedDatasets: state.syncedDatasets || [],
       datasetCounts,
       totalRecords,
-      frameworkReady: provider.id === 'manual' || ['quickbooks', 'brightpearl'].includes(provider.id),
+      frameworkReady: provider.id === 'manual' || ['quickbooks', 'brightpearl', 'google_sheets'].includes(provider.id),
       secretsStoredInWorkspace: false,
     };
   });
